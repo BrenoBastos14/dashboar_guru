@@ -132,6 +132,39 @@ st.caption(f"Exibindo **{len(df_filtered):,}** registros")
 st.divider()
 
 # ---------------------------------------------------------------------------
+# Resumo por Origem / UTM
+# ---------------------------------------------------------------------------
+_utm_resumo = [
+    ("origem_3",    "Origem 3"),
+    ("utm_source",  "UTM Source"),
+    ("utm_campaign","UTM Campaign"),
+    ("utm_medium",  "UTM Medium"),
+    ("utm_content", "UTM Content"),
+]
+campos_resumo = [(c, l) for c, l in _utm_resumo if c in df_filtered.columns and "valor" in df_filtered.columns]
+
+if campos_resumo:
+    st.subheader("Resumo por Origem / UTM")
+    for i in range(0, len(campos_resumo), 2):
+        cols = st.columns(2)
+        for j, (campo, label) in enumerate(campos_resumo[i:i+2]):
+            with cols[j]:
+                resumo = (
+                    df_filtered[df_filtered[campo].notna()]
+                    .groupby(campo)["valor"]
+                    .agg(Vendas="count", Receita="sum")
+                    .sort_values("Receita", ascending=False)
+                    .reset_index()
+                )
+                resumo["Receita"] = resumo["Receita"].apply(
+                    lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                )
+                resumo = resumo.rename(columns={campo: label})
+                st.markdown(f"**{label}**")
+                st.dataframe(resumo, use_container_width=True, hide_index=True)
+    st.divider()
+
+# ---------------------------------------------------------------------------
 # Tabela de Transações
 # ---------------------------------------------------------------------------
 st.subheader("Transações Detalhadas")
