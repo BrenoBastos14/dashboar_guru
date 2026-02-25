@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from utils.data_processor import load_csv, clean_data, filter_data
+from utils.data_processor import load_csv, clean_data, filter_data, compute_kpis
 
 # ---------------------------------------------------------------------------
 # Configuração da página
@@ -125,10 +125,20 @@ df_filtered = filter_data(
 )
 
 # ---------------------------------------------------------------------------
-# Header
+# Header + KPIs
 # ---------------------------------------------------------------------------
 st.markdown("## 📊 Dashboard de Vendas — Guru Manager")
-st.caption(f"Exibindo **{len(df_filtered):,}** registros")
+
+kpis = compute_kpis(df_filtered)
+
+def _brl(v):
+    return "R$ " + f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+k1, k2, k3 = st.columns(3)
+k1.metric("Volume de Vendas", f"{kpis['num_vendas']:,}")
+k2.metric("Receita Total", _brl(kpis["receita_total"]))
+k3.metric("Ticket Médio", _brl(kpis["ticket_medio"]))
+
 st.divider()
 
 # ---------------------------------------------------------------------------
@@ -149,16 +159,12 @@ if campos_resumo:
         cols = st.columns(2)
         for j, (campo, label) in enumerate(campos_resumo[i:i+2]):
             with cols[j]:
-                resumo = (
-                    df_filtered[df_filtered[campo].notna()]
-                    .groupby(campo)["valor"]
-                    .agg(Vendas="count", Receita="sum")
-                    .sort_values("Receita", ascending=False)
-                    .reset_index()
-                )
-                resumo["Receita"] = resumo["Receita"].apply(
-                    lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                )
+                grp = df_filtered[df_filtered[campo].notna()].groupby(campo)["valor"]
+                resumo = pd.concat(
+                    [grp.count().rename("Vendas"), grp.sum().rename("Receita (R$)")],
+                    axis=1,
+                ).sort_values("Receita (R$)", ascending=False).reset_index()
+                resumo["Receita (R$)"] = resumo["Receita (R$)"].apply(_brl)
                 resumo = resumo.rename(columns={campo: label})
                 st.markdown(f"**{label}**")
                 st.dataframe(resumo, use_container_width=True, hide_index=True)
