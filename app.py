@@ -1,7 +1,10 @@
-import streamlit as st
-import pandas as pd
+import traceback
 
-from utils.data_processor import load_csv, clean_data, filter_data, compute_kpis
+import pandas as pd
+import streamlit as st
+
+from utils.data_processor import clean_data, compute_kpis, filter_data, load_csv
+
 
 # ---------------------------------------------------------------------------
 # Configuração da página
@@ -12,6 +15,26 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+
+def _brl(v):
+    """Formata float como moeda BRL. Ex: 1234.5 → 'R$ 1.234,50'"""
+    try:
+        return "R$ " + f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (TypeError, ValueError):
+        return "R$ 0,00"
+
+
+def _resumo_tabela(df, campo, label):
+    """Retorna DataFrame agrupado por campo com Vendas e Receita (R$)."""
+    grp = df[df[campo].notna()].groupby(campo)["valor"]
+    tbl = pd.concat(
+        [grp.count().rename("Vendas"), grp.sum().rename("Receita (R$)")],
+        axis=1,
+    ).sort_values("Receita (R$)", ascending=False).reset_index()
+    tbl["Receita (R$)"] = tbl["Receita (R$)"].apply(_brl)
+    return tbl.rename(columns={campo: label})
+
 
 # ---------------------------------------------------------------------------
 # Sidebar — upload
@@ -60,11 +83,21 @@ try:
     df = clean_data(df_raw)
 except Exception as e:
     st.error(f"Erro ao processar o arquivo: {e}")
+    st.code(traceback.format_exc(), language="python")
     st.stop()
 
 if df.empty:
     st.warning("O arquivo CSV está vazio ou não contém dados válidos.")
     st.stop()
+
+# Diagnóstico — expander mostrando o que foi detectado
+with st.expander("🔍 Diagnóstico — colunas detectadas no CSV", expanded=False):
+    st.write(f"**Linhas carregadas:** {len(df):,}")
+    st.write(f"**Colunas detectadas:** {list(df.columns)}")
+    st.write(f"**`valor` presente:** {'Sim ✅' if 'valor' in df.columns else 'Não ❌'}")
+    if "valor" in df.columns:
+        st.write(f"**Amostra de valores:** {df['valor'].head(5).tolist()}")
+    st.dataframe(df_raw.head(3), use_container_width=True)
 
 # ---------------------------------------------------------------------------
 # Filtros na sidebar
@@ -129,56 +162,52 @@ df_filtered = filter_data(
 # ---------------------------------------------------------------------------
 st.markdown("## 📊 Dashboard de Vendas — Guru Manager")
 
-try:
-    kpis = compute_kpis(df_filtered)
+kpis = compute_kpis(df_filtered)
 
-    def _brl(v):
-        return "R$ " + f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+k1, k2, k3 = st.columns(3)
+k1.metric("Volume de Vendas", f"{kpis['num_vendas']:,}")
+k2.metric("Receita Total", _brl(kpis["receita_total"]))
+k3.metric("Ticket Médio", _brl(kpis["ticket_medio"]))
 
-    k1, k2, k3 = st.columns(3)
-    k1.metric("Volume de Vendas", f"{kpis['num_vendas']:,}")
-    k2.metric("Receita Total", _brl(kpis["receita_total"]))
-    k3.metric("Ticket Médio", _brl(kpis["ticket_medio"]))
+st.divider()
 
+# ---------------------------------------------------------------------------
+# Resumo por Produto
+# ---------------------------------------------------------------------------
+if "produto" in df_filtered.columns and "valor" in df_filtered.columns:
+    st.subheader("Resumo por Produto")
+    tbl_produto = _resumo_tabela(df_filtered, "produto", "Produto")
+    st.dataframe(tbl_produto, use_container_width=True, hide_index=True)
     st.divider()
-except Exception as e:
-    st.error(f"❌ Erro ao calcular KPIs: {str(e)}")
-    import traceback
-    st.code(traceback.format_exc(), language="python")
 
 # ---------------------------------------------------------------------------
 # Resumo por Origem / UTM
 # ---------------------------------------------------------------------------
-try:
-    _utm_resumo = [
-        ("origem_3",    "Origem 3"),
-        ("utm_source",  "UTM Source"),
-        ("utm_campaign","UTM Campaign"),
-        ("utm_medium",  "UTM Medium"),
-        ("utm_content", "UTM Content"),
-    ]
-    campos_resumo = [(c, l) for c, l in _utm_resumo if c in df_filtered.columns and "valor" in df_filtered.columns]
+_utm_resumo = [
+    ("origem_3",    "Origem 3"),
+    ("utm_source",  "UTM Source"),
+    ("utm_campaign","UTM Campaign"),
+    ("utm_medium",  "UTM Medium"),
+    ("utm_content", "UTM Content"),
+]
+campos_resumo = [
+    (c, l) for c, l in _utm_resumo
+    if c in df_filtered.columns and "valor" in df_filtered.columns
+]
 
-    if campos_resumo:
-        st.subheader("Resumo por Origem / UTM")
-        for i in range(0, len(campos_resumo), 2):
-            cols = st.columns(2)
-            for j, (campo, label) in enumerate(campos_resumo[i:i+2]):
-                with cols[j]:
-                    grp = df_filtered[df_filtered[campo].notna()].groupby(campo)["valor"]
-                    resumo = pd.concat(
-                        [grp.count().rename("Vendas"), grp.sum().rename("Receita (R$)")],
-                        axis=1,
-                    ).sort_values("Receita (R$)", ascending=False).reset_index()
-                    resumo["Receita (R$)"] = resumo["Receita (R$)"].apply(_brl)
-                    resumo = resumo.rename(columns={campo: label})
-                    st.markdown(f"**{label}**")
-                    st.dataframe(resumo, use_container_width=True, hide_index=True)
-        st.divider()
-except Exception as e:
-    st.error(f"❌ Erro ao exibir resumo UTM: {str(e)}")
-    import traceback
-    st.code(traceback.format_exc(), language="python")
+if campos_resumo:
+    st.subheader("Resumo por Origem / UTM")
+    for i in range(0, len(campos_resumo), 2):
+        cols = st.columns(2)
+        for j, (campo, label) in enumerate(campos_resumo[i:i+2]):
+            with cols[j]:
+                st.markdown(f"**{label}**")
+                st.dataframe(
+                    _resumo_tabela(df_filtered, campo, label),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+    st.divider()
 
 # ---------------------------------------------------------------------------
 # Tabela de Transações
@@ -209,9 +238,7 @@ df_display = df_filtered[display_cols].copy()
 if "data" in df_display.columns:
     df_display["data"] = df_display["data"].dt.strftime("%d/%m/%Y %H:%M")
 if "valor" in df_display.columns:
-    df_display["valor"] = df_display["valor"].apply(
-        lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    )
+    df_display["valor"] = df_display["valor"].apply(_brl)
 
 df_display = df_display.rename(columns=col_labels)
 
