@@ -248,13 +248,17 @@ if campos_pivot:
         key="radio_pivot",
     )
     use_count = metrica_pv == "Nº de Vendas"
+    has_status = "status" in df_filtered.columns
 
     for campo, label in campos_pivot:
         df_tmp = df_filtered[df_filtered[campo].notna()].copy()
         df_tmp["_dia"] = df_tmp["data"].dt.date
 
+        # Índice: campo + status (quando disponível)
+        idx = [campo, "status"] if has_status else [campo]
+
         pivot = df_tmp.pivot_table(
-            index=campo,
+            index=idx,
             columns="_dia",
             values="valor",
             aggfunc="count" if use_count else "sum",
@@ -263,10 +267,17 @@ if campos_pivot:
         # Ordena colunas por data e formata como DD/MM
         pivot = pivot.sort_index(axis=1)
         pivot.columns = [pd.Timestamp(d).strftime("%d/%m") for d in pivot.columns]
-        pivot.index.name = label
+        pivot.index.names = [label, "Status"] if has_status else [label]
 
-        # Ordena linhas pelo total decrescente
-        pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).index]
+        # Ordena primeiro nível pelo total decrescente
+        if has_status:
+            level0_order = (
+                pivot.groupby(level=0).sum().sum(axis=1)
+                .sort_values(ascending=False).index
+            )
+            pivot = pivot.loc[level0_order]
+        else:
+            pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).index]
 
         if use_count:
             pivot = pivot.astype(int)
