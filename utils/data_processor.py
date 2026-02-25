@@ -20,6 +20,11 @@ COLUMN_ALIASES = {
     "status": ["Status", "Estado", "Situação", "Situacao"],
     "aprovada_em": ["Aprovada em", "Aprovado em", "Data de Aprovação"],
     "cancelada_em": ["Cancelada em", "Cancelado em", "Data de Cancelamento"],
+    "origem_3": ["Origem 3", "origem 3", "Origem3", "Source 3"],
+    "utm_source": ["UTM Source", "utm_source", "Utm Source", "UTM source"],
+    "utm_campaign": ["UTM Campaign", "utm_campaign", "Utm Campaign", "UTM campaign"],
+    "utm_medium": ["UTM Medium", "utm_medium", "Utm Medium", "UTM medium"],
+    "utm_content": ["UTM Content", "utm_content", "Utm Content", "UTM content"],
 }
 
 STATUS_APROVADO = {"aprovado", "aprovada", "completa", "completo", "pago", "paga"}

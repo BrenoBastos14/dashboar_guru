@@ -7,6 +7,7 @@ from utils.charts import (
     chart_vendas_por_produto,
     chart_distribuicao_status,
     chart_metodo_pagamento,
+    chart_receita_por_campo,
 )
 
 # ---------------------------------------------------------------------------
@@ -232,12 +233,38 @@ with col_pay:
     )
 
 # ---------------------------------------------------------------------------
+# Seção: Análise de Origem / UTM
+# ---------------------------------------------------------------------------
+UTM_CAMPOS = [
+    ("origem_3",    "Origem 3"),
+    ("utm_source",  "UTM Source"),
+    ("utm_campaign","UTM Campaign"),
+    ("utm_medium",  "UTM Medium"),
+    ("utm_content", "UTM Content"),
+]
+
+campos_presentes = [(campo, label) for campo, label in UTM_CAMPOS if campo in df_filtered.columns]
+
+if campos_presentes:
+    st.divider()
+    st.subheader("Análise de Origem / UTM")
+
+    for i in range(0, len(campos_presentes), 2):
+        cols = st.columns(2)
+        for j, (campo, label) in enumerate(campos_presentes[i:i+2]):
+            with cols[j]:
+                st.plotly_chart(
+                    chart_receita_por_campo(df_filtered, campo, label),
+                    use_container_width=True,
+                )
+
+# ---------------------------------------------------------------------------
 # Tabela de Transações
 # ---------------------------------------------------------------------------
 st.divider()
 st.subheader("Transações Detalhadas")
 
-display_cols = [c for c in ["data", "codigo", "contato", "produto", "valor", "metodo_pagamento", "status"] if c in df_filtered.columns]
+display_cols = [c for c in ["data", "codigo", "contato", "produto", "valor", "metodo_pagamento", "status", "origem_3", "utm_source", "utm_campaign", "utm_medium", "utm_content"] if c in df_filtered.columns]
 col_labels = {
     "data": "Data",
     "codigo": "Código",
@@ -246,6 +273,11 @@ col_labels = {
     "valor": "Valor (R$)",
     "metodo_pagamento": "Pagamento",
     "status": "Status",
+    "origem_3": "Origem 3",
+    "utm_source": "UTM Source",
+    "utm_campaign": "UTM Campaign",
+    "utm_medium": "UTM Medium",
+    "utm_content": "UTM Content",
 }
 
 df_display = df_filtered[display_cols].copy()

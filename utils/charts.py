@@ -190,6 +190,50 @@ def chart_metodo_pagamento(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def chart_receita_por_campo(df: pd.DataFrame, campo: str, titulo: str, top_n: int = 10) -> go.Figure:
+    """Gráfico de barras horizontal: Receita por campo (origem_3, utm_source, etc.)."""
+    if campo not in df.columns or "valor" not in df.columns or df.empty:
+        return _empty_chart(f"Sem dados de {titulo}")
+
+    top = (
+        df[df[campo].notna() & (df[campo].astype(str).str.strip() != "")]
+        .groupby(campo)["valor"]
+        .sum()
+        .nlargest(top_n)
+        .reset_index()
+        .sort_values("valor")
+    )
+
+    if top.empty:
+        return _empty_chart(f"Sem dados de {titulo}")
+
+    top["valor_fmt"] = top["valor"].apply(_format_brl)
+    top["quantidade"] = df.groupby(campo)["valor"].count().reindex(top[campo]).values
+
+    fig = px.bar(
+        top,
+        x="valor",
+        y=campo,
+        orientation="h",
+        labels={"valor": "Receita (R$)", campo: titulo},
+        color_discrete_sequence=[COLORS_PRIMARY[0]],
+        custom_data=["valor_fmt", "quantidade"],
+    )
+    fig.update_traces(
+        hovertemplate="<b>%{y}</b><br>Receita: %{customdata[0]}<br>Vendas: %{customdata[1]}<extra></extra>",
+    )
+    fig.update_layout(
+        title=f"Receita por {titulo}",
+        xaxis_title="R$",
+        yaxis_title=None,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(gridcolor="#E2E8F0"),
+        margin=dict(l=10, r=10, t=40, b=10),
+    )
+    return fig
+
+
 def _empty_chart(message: str) -> go.Figure:
     """Retorna um gráfico vazio com mensagem."""
     fig = go.Figure()
