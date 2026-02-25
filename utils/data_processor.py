@@ -112,6 +112,11 @@ def filter_data(
     end_date=None,
     status_list=None,
     produtos_list=None,
+    origem_3_list=None,
+    utm_source_list=None,
+    utm_campaign_list=None,
+    utm_medium_list=None,
+    utm_content_list=None,
 ) -> pd.DataFrame:
     """Aplica filtros combinados ao DataFrame."""
     mask = pd.Series([True] * len(df), index=df.index)
@@ -127,6 +132,16 @@ def filter_data(
 
     if produtos_list and "produto" in df.columns:
         mask &= df["produto"].isin(produtos_list)
+
+    for col, val_list in [
+        ("origem_3", origem_3_list),
+        ("utm_source", utm_source_list),
+        ("utm_campaign", utm_campaign_list),
+        ("utm_medium", utm_medium_list),
+        ("utm_content", utm_content_list),
+    ]:
+        if val_list and col in df.columns:
+            mask &= df[col].isin(val_list)
 
     return df[mask].copy()
 

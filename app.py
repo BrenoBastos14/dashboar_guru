@@ -145,6 +145,27 @@ with st.sidebar:
     produto_opts = sorted(df["produto"].dropna().unique().tolist()) if "produto" in df.columns else []
     selected_produtos = st.multiselect("Produto", options=produto_opts, default=produto_opts)
 
+    # Filtros de Origem / UTM
+    _utm_filtros = [
+        ("origem_3",    "Origem 3"),
+        ("utm_source",  "UTM Source"),
+        ("utm_campaign","UTM Campaign"),
+        ("utm_medium",  "UTM Medium"),
+        ("utm_content", "UTM Content"),
+    ]
+    _utm_has_any = any(c in df.columns for c, _ in _utm_filtros)
+    if _utm_has_any:
+        st.divider()
+        st.markdown("**Origem / UTM**")
+
+    utm_selected = {}
+    for campo, label in _utm_filtros:
+        if campo in df.columns:
+            opts = sorted(df[campo].dropna().astype(str).str.strip().replace("", float("nan")).dropna().unique().tolist())
+            utm_selected[campo] = st.multiselect(label, options=opts, default=opts)
+        else:
+            utm_selected[campo] = None
+
     # Agrupamento temporal
     st.divider()
     agrupamento = st.radio(
@@ -167,6 +188,11 @@ df_filtered = filter_data(
     end_date=end_date,
     status_list=selected_status if selected_status else None,
     produtos_list=selected_produtos if selected_produtos else None,
+    origem_3_list=utm_selected.get("origem_3") or None,
+    utm_source_list=utm_selected.get("utm_source") or None,
+    utm_campaign_list=utm_selected.get("utm_campaign") or None,
+    utm_medium_list=utm_selected.get("utm_medium") or None,
+    utm_content_list=utm_selected.get("utm_content") or None,
 )
 
 kpis = compute_kpis(df_filtered)
