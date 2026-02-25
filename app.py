@@ -25,6 +25,18 @@ def _brl(v):
         return "R$ 0,00"
 
 
+def _cell_style(val, vmax):
+    """CSS de fundo proporcional ao valor — sem precisar de matplotlib."""
+    if vmax == 0 or val == 0:
+        return "background-color: #f5f5f5; color: #cccccc"
+    intensity = float(val) / float(vmax)
+    r = int(255 - (255 - 45)  * intensity)
+    g = int(255 - (255 - 125) * intensity)
+    b = int(255 - (255 - 70)  * intensity)
+    text = "white" if intensity > 0.55 else "#222222"
+    return f"background-color: rgb({r},{g},{b}); color: {text}"
+
+
 def _resumo_tabela(df, campo, label):
     """Retorna DataFrame agrupado por campo com Vendas e Receita (R$)."""
     grp = df[df[campo].notna()].groupby(campo)["valor"]
@@ -258,11 +270,12 @@ if campos_pivot:
 
         if use_count:
             pivot = pivot.astype(int)
-            styled = pivot.style.background_gradient(cmap="YlGn", axis=None, vmin=0).format("{:d}")
+        vmax = float(pivot.values.max()) if pivot.values.max() > 0 else 1.0
+        styled = pivot.style.applymap(lambda v: _cell_style(v, vmax))
+        if use_count:
+            styled = styled.format("{:d}")
         else:
-            styled = pivot.style.background_gradient(cmap="YlGn", axis=None, vmin=0).format(
-                lambda v: _brl(v) if v > 0 else "—"
-            )
+            styled = styled.format(lambda v: _brl(v) if v > 0 else "—")
 
         with st.expander(f"**{label}**", expanded=True):
             st.dataframe(styled, use_container_width=True)
