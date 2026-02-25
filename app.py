@@ -210,6 +210,66 @@ if campos_resumo:
     st.divider()
 
 # ---------------------------------------------------------------------------
+# Pivot: Vendas por Dia × Origem / UTM
+# ---------------------------------------------------------------------------
+_pivot_campos = [
+    ("origem_3",    "Origem 3"),
+    ("utm_source",  "UTM Source"),
+    ("utm_campaign","UTM Campaign"),
+    ("utm_medium",  "UTM Medium"),
+    ("utm_content", "UTM Content"),
+]
+campos_pivot = [
+    (c, l) for c, l in _pivot_campos
+    if c in df_filtered.columns
+    and df_filtered[c].notna().any()
+    and "valor" in df_filtered.columns
+    and "data" in df_filtered.columns
+]
+
+if campos_pivot:
+    st.subheader("Distribuição por Dia")
+    metrica_pv = st.radio(
+        "Métrica",
+        ["Nº de Vendas", "Receita (R$)"],
+        horizontal=True,
+        key="radio_pivot",
+    )
+    use_count = metrica_pv == "Nº de Vendas"
+
+    for campo, label in campos_pivot:
+        df_tmp = df_filtered[df_filtered[campo].notna()].copy()
+        df_tmp["_dia"] = df_tmp["data"].dt.date
+
+        pivot = df_tmp.pivot_table(
+            index=campo,
+            columns="_dia",
+            values="valor",
+            aggfunc="count" if use_count else "sum",
+            fill_value=0,
+        )
+        # Ordena colunas por data e formata como DD/MM
+        pivot = pivot.sort_index(axis=1)
+        pivot.columns = [pd.Timestamp(d).strftime("%d/%m") for d in pivot.columns]
+        pivot.index.name = label
+
+        # Ordena linhas pelo total decrescente
+        pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).index]
+
+        if use_count:
+            pivot = pivot.astype(int)
+            styled = pivot.style.background_gradient(cmap="YlGn", axis=None, vmin=0).format("{:d}")
+        else:
+            styled = pivot.style.background_gradient(cmap="YlGn", axis=None, vmin=0).format(
+                lambda v: _brl(v) if v > 0 else "—"
+            )
+
+        with st.expander(f"**{label}**", expanded=True):
+            st.dataframe(styled, use_container_width=True)
+
+    st.divider()
+
+# ---------------------------------------------------------------------------
 # Tabela de Transações
 # ---------------------------------------------------------------------------
 st.subheader("Transações Detalhadas")
