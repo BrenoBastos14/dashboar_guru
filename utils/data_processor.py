@@ -7,10 +7,10 @@ import numpy as np
 # Mapeamento flexível de colunas do Guru Manager para nomes internos
 COLUMN_ALIASES = {
     "data": ["Criada em", "Data", "Data da Venda", "Data do Pedido", "created_at"],
-    "codigo": ["Código", "Codigo", "ID", "Pedido", "Order"],
-    "contato": ["Contato", "Cliente", "Nome", "Customer", "Nome do Cliente"],
-    "produto": ["Produto", "Product", "Nome do Produto"],
-    "valor": ["Valor", "Value", "Total", "Preço", "Preco", "Valor Total"],
+    "codigo": ["Código", "Codigo", "ID", "Pedido", "Order", "id transação", "Id Transação", "id transacao"],
+    "contato": ["Contato", "Cliente", "Nome", "Customer", "Nome do Cliente", "nome contato", "Nome Contato"],
+    "produto": ["Produto", "Product", "Nome do Produto", "nome produto", "Nome Produto"],
+    "valor": ["Valor", "Value", "Total", "Preço", "Preco", "Valor Total", "valor venda", "Valor Venda"],
     "metodo_pagamento": [
         "Método de Pagamento",
         "Metodo de Pagamento",
