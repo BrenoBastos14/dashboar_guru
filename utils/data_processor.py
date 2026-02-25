@@ -103,6 +103,11 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     if "data" in df.columns:
         df = df.dropna(subset=["data"])
 
+    # Limpa espaços das colunas UTM
+    for utm_col in ("origem_3", "utm_source", "utm_campaign", "utm_medium", "utm_content"):
+        if utm_col in df.columns:
+            df[utm_col] = df[utm_col].astype(str).str.strip().replace("nan", pd.NA)
+
     return df
 
 
