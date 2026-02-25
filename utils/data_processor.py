@@ -1,4 +1,5 @@
 import io
+import json
 import pandas as pd
 import numpy as np
 
@@ -107,6 +108,18 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     for utm_col in ("origem_3", "utm_source", "utm_campaign", "utm_medium", "utm_content"):
         if utm_col in df.columns:
             df[utm_col] = df[utm_col].astype(str).str.strip().replace("nan", pd.NA)
+
+    # utm_content: extrai o nome do anúncio (campo "co") quando o valor é JSON
+    if "utm_content" in df.columns:
+        def _extract_ad_name(val):
+            if pd.isna(val):
+                return val
+            try:
+                parsed = json.loads(str(val))
+                return parsed.get("co", val)
+            except (json.JSONDecodeError, TypeError):
+                return val
+        df["utm_content"] = df["utm_content"].apply(_extract_ad_name)
 
     return df
 
