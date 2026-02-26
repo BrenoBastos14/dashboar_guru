@@ -153,6 +153,23 @@ with st.sidebar:
         else:
             utm_selected[campo] = None
 
+    # ------------------------------------------------------------------
+    # Facebook Ads — credenciais
+    # ------------------------------------------------------------------
+    st.divider()
+    with st.expander("🔵 Facebook Ads (opcional)"):
+        st.caption(
+            "Preencha para cruzar seu gasto em anúncios com as vendas do Guru. "
+            "Necessário um token com permissão **ads_read**."
+        )
+        fb_token = st.text_input("Access Token", type="password", key="fb_token")
+        fb_account = st.text_input(
+            "Ad Account ID",
+            placeholder="Ex: 123456789",
+            key="fb_account",
+        )
+        fb_ativo = bool(fb_token and fb_account)
+
 # ---------------------------------------------------------------------------
 # Aplica filtros
 # ---------------------------------------------------------------------------
@@ -290,6 +307,127 @@ if campos_pivot:
 
         with st.expander(f"**{label}**", expanded=True):
             st.dataframe(styled, use_container_width=True)
+
+    st.divider()
+
+# ---------------------------------------------------------------------------
+# Facebook Ads — Desempenho por Campanha
+# ---------------------------------------------------------------------------
+if fb_ativo and start_date and end_date:
+    from utils.facebook_ads import fetch_campaign_insights
+
+    st.subheader("🔵 Facebook Ads — Desempenho por Campanha")
+
+    @st.cache_data(ttl=300, show_spinner="Buscando dados do Facebook Ads…")
+    def _buscar_fb(token, account, since, until):
+        return fetch_campaign_insights(token, account, since, until)
+
+    try:
+        df_fb = _buscar_fb(
+            fb_token,
+            fb_account,
+            str(start_date),
+            str(end_date),
+        )
+
+        if df_fb.empty:
+            st.info("Nenhuma campanha encontrada no Facebook Ads para o período selecionado.")
+        else:
+            # Agrupamento das vendas Guru por utm_campaign
+            if "utm_campaign" in df_filtered.columns:
+                df_guru_grp = (
+                    df_filtered[df_filtered["utm_campaign"].notna()]
+                    .groupby("utm_campaign")
+                    .agg(vendas=("valor", "count"), receita=("valor", "sum"))
+                    .reset_index()
+                )
+                df_guru_grp["_key"] = df_guru_grp["utm_campaign"].str.strip().str.lower()
+            else:
+                df_guru_grp = pd.DataFrame(columns=["_key", "vendas", "receita"])
+
+            df_fb["_key"] = df_fb["campaign_name"].str.strip().str.lower()
+            df_merged = df_fb.merge(df_guru_grp, on="_key", how="left")
+
+            # Métricas combinadas
+            df_merged["ROAS"] = (
+                df_merged["receita"] / df_merged["spend"].replace(0, pd.NA)
+            ).round(2)
+            df_merged["CPA (R$)"] = (
+                df_merged["spend"] / df_merged["vendas"].replace(0, pd.NA)
+            ).round(2)
+            df_merged["Conv. (%)"] = (
+                df_merged["vendas"] / df_merged["clicks"].replace(0, pd.NA) * 100
+            ).round(2)
+
+            # KPIs do Facebook
+            fk1, fk2, fk3, fk4 = st.columns(4)
+            fk1.metric("Total Gasto", _brl(df_merged["spend"].sum()))
+            fk2.metric("Impressões", f"{int(df_merged['impressions'].sum()):,}")
+            fk3.metric("Cliques", f"{int(df_merged['clicks'].sum()):,}")
+            roas_total = (
+                df_merged["receita"].sum() / df_merged["spend"].sum()
+                if df_merged["spend"].sum() > 0 else 0
+            )
+            fk4.metric("ROAS Geral", f"{roas_total:.2f}x")
+
+            st.markdown("")
+
+            # Tabela por campanha
+            exibir = df_merged.rename(columns={
+                "campaign_name": "Campanha",
+                "spend": "Gasto (R$)",
+                "impressions": "Impressões",
+                "clicks": "Cliques",
+                "ctr": "CTR (%)",
+                "reach": "Alcance",
+                "vendas": "Vendas",
+                "receita": "Receita (R$)",
+            })
+            colunas_exibir = [
+                c for c in [
+                    "Campanha", "Gasto (R$)", "Impressões", "Cliques", "CTR (%)",
+                    "Alcance", "Vendas", "Receita (R$)", "ROAS", "CPA (R$)", "Conv. (%)",
+                ] if c in exibir.columns
+            ]
+            exibir = (
+                exibir[colunas_exibir]
+                .sort_values("Receita (R$)", ascending=False, na_position="last")
+                .reset_index(drop=True)
+            )
+
+            # Formata colunas monetárias
+            fmt_brl = ["Gasto (R$)", "Receita (R$)", "CPA (R$)"]
+            fmt_int = ["Impressões", "Cliques", "Alcance", "Vendas"]
+            styled_fb = exibir.style
+            for col in fmt_brl:
+                if col in exibir.columns:
+                    styled_fb = styled_fb.format(
+                        lambda v, c=col: _brl(v) if pd.notna(v) else "—", subset=col
+                    )
+            for col in fmt_int:
+                if col in exibir.columns:
+                    styled_fb = styled_fb.format(
+                        lambda v, c=col: f"{int(v):,}" if pd.notna(v) else "—", subset=col
+                    )
+            for col in ["CTR (%)", "Conv. (%)"]:
+                if col in exibir.columns:
+                    styled_fb = styled_fb.format(
+                        lambda v: f"{v:.2f}%" if pd.notna(v) else "—", subset=col
+                    )
+            if "ROAS" in exibir.columns:
+                styled_fb = styled_fb.format(
+                    lambda v: f"{v:.2f}x" if pd.notna(v) else "—", subset="ROAS"
+                )
+
+            st.dataframe(styled_fb, use_container_width=True, hide_index=True)
+
+            st.caption(
+                "💡 O cruzamento é feito pelo nome da campanha no Facebook × coluna "
+                "**utm_campaign** do CSV. Certifique-se de que os nomes coincidem."
+            )
+
+    except Exception as e:
+        st.error(f"Erro ao buscar dados do Facebook Ads: {e}")
 
     st.divider()
 
