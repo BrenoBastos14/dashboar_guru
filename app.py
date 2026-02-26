@@ -348,15 +348,20 @@ if fb_ativo and start_date and end_date:
             df_fb["_key"] = df_fb["campaign_name"].str.strip().str.lower()
             df_merged = df_fb.merge(df_guru_grp, on="_key", how="left")
 
-            # Métricas combinadas
+            # Garante dtype numérico após o merge
+            for _col in ["spend", "impressions", "clicks", "receita", "vendas"]:
+                if _col in df_merged.columns:
+                    df_merged[_col] = pd.to_numeric(df_merged[_col], errors="coerce").fillna(0)
+
+            # Métricas combinadas (.where mantém dtype float, evita conversão para object)
             df_merged["ROAS"] = (
-                df_merged["receita"] / df_merged["spend"].replace(0, pd.NA)
+                df_merged["receita"] / df_merged["spend"].where(df_merged["spend"] > 0)
             ).round(2)
             df_merged["CPA (R$)"] = (
-                df_merged["spend"] / df_merged["vendas"].replace(0, pd.NA)
+                df_merged["spend"] / df_merged["vendas"].where(df_merged["vendas"] > 0)
             ).round(2)
             df_merged["Conv. (%)"] = (
-                df_merged["vendas"] / df_merged["clicks"].replace(0, pd.NA) * 100
+                df_merged["vendas"] / df_merged["clicks"].where(df_merged["clicks"] > 0) * 100
             ).round(2)
 
             # KPIs do Facebook
