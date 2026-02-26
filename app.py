@@ -3,6 +3,7 @@ import traceback
 import pandas as pd
 import streamlit as st
 
+from utils.charts import chart_receita_por_periodo
 from utils.data_processor import clean_data, compute_kpis, filter_data, load_csv
 
 
@@ -153,6 +154,19 @@ with st.sidebar:
         else:
             utm_selected[campo] = None
 
+    # Agrupamento temporal
+    if "data" in df.columns:
+        st.divider()
+        agrupamento = st.radio(
+            "Agrupar receita por",
+            options=["D", "W", "ME"],
+            format_func=lambda x: {"D": "Dia", "W": "Semana", "ME": "Mês"}[x],
+            horizontal=True,
+            index=0,
+        )
+    else:
+        agrupamento = "D"
+
 
 # ---------------------------------------------------------------------------
 # Aplica filtros
@@ -181,6 +195,16 @@ k1, k2, k3 = st.columns(3)
 k1.metric("Volume de Vendas", f"{kpis['num_vendas']:,}")
 k2.metric("Receita Total", _brl(kpis["receita_total"]))
 k3.metric("Ticket Médio", _brl(kpis["ticket_medio"]))
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# Gráfico: Receita por Período
+# ---------------------------------------------------------------------------
+st.plotly_chart(
+    chart_receita_por_periodo(df_filtered, agrupamento),
+    use_container_width=True,
+)
 
 st.divider()
 
