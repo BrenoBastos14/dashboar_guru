@@ -209,6 +209,53 @@ st.plotly_chart(
 st.divider()
 
 # ---------------------------------------------------------------------------
+# Status por Dia
+# ---------------------------------------------------------------------------
+if (
+    "status" in df_filtered.columns
+    and "data" in df_filtered.columns
+    and "valor" in df_filtered.columns
+    and not df_filtered.empty
+):
+    st.subheader("Status por Dia")
+    metrica_st = st.radio(
+        "Métrica",
+        ["Nº de Vendas", "Receita (R$)"],
+        horizontal=True,
+        key="radio_status_dia",
+    )
+    use_count_st = metrica_st == "Nº de Vendas"
+
+    df_st = df_filtered.copy()
+    df_st["_dia"] = df_st["data"].dt.date
+
+    pivot_st = df_st.pivot_table(
+        index="status",
+        columns="_dia",
+        values="valor",
+        aggfunc="count" if use_count_st else "sum",
+        fill_value=0,
+    )
+    pivot_st = pivot_st.sort_index(axis=1)
+    pivot_st.columns = [pd.Timestamp(d).strftime("%d/%m") for d in pivot_st.columns]
+    pivot_st.index.name = "Status"
+
+    # Ordena por total decrescente
+    pivot_st = pivot_st.loc[pivot_st.sum(axis=1).sort_values(ascending=False).index]
+
+    if use_count_st:
+        pivot_st = pivot_st.astype(int)
+    vmax_st = float(pivot_st.values.max()) if pivot_st.values.max() > 0 else 1.0
+    styled_st = pivot_st.style.applymap(lambda v: _cell_style(v, vmax_st))
+    if use_count_st:
+        styled_st = styled_st.format("{:d}")
+    else:
+        styled_st = styled_st.format(lambda v: _brl(v) if v > 0 else "—")
+
+    st.dataframe(styled_st, use_container_width=True)
+    st.divider()
+
+# ---------------------------------------------------------------------------
 # Resumo por Produto
 # ---------------------------------------------------------------------------
 if "produto" in df_filtered.columns and "valor" in df_filtered.columns:
