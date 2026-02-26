@@ -117,14 +117,17 @@ with st.expander("🔍 Diagnóstico — colunas detectadas no CSV", expanded=Fal
 # ---------------------------------------------------------------------------
 with st.sidebar:
     # Filtro de período
+    st.markdown("**Período**")
     if "data" in df.columns:
         min_date = df["data"].min().date()
         max_date = df["data"].max().date()
         start_date = st.date_input("Data inicial", value=min_date, min_value=min_date, max_value=max_date)
         end_date = st.date_input("Data final", value=max_date, min_value=min_date, max_value=max_date)
     else:
+        st.caption("Coluna de data não detectada no CSV.")
         start_date = end_date = None
 
+    st.divider()
     # Filtro de status
     status_opts = sorted(df["status"].dropna().unique().tolist()) if "status" in df.columns else []
     selected_status = st.multiselect("Status", options=status_opts, default=status_opts)
