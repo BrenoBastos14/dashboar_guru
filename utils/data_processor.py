@@ -6,7 +6,7 @@ import numpy as np
 
 # Mapeamento flexível de colunas do Guru Manager para nomes internos
 COLUMN_ALIASES = {
-    "data": ["Criada em", "Data", "Data da Venda", "Data do Pedido", "created_at"],
+    "data": ["Criada em", "Data", "Data da Venda", "Data do Pedido", "Data Pedido", "data pedido", "created_at"],
     "codigo": ["Código", "Codigo", "ID", "Pedido", "Order", "id transação", "Id Transação", "id transacao"],
     "contato": ["Contato", "Cliente", "Nome", "Customer", "Nome do Cliente", "nome contato", "Nome Contato"],
     "produto": ["Produto", "Product", "Nome do Produto", "nome produto", "Nome Produto"],
@@ -58,10 +58,12 @@ def load_csv(file) -> pd.DataFrame:
 
 
 def _find_column(df: pd.DataFrame, key: str):
-    """Retorna o nome real da coluna no DataFrame para uma chave interna."""
+    """Retorna o nome real da coluna no DataFrame para uma chave interna (case-insensitive)."""
+    lower_map = {c.lower(): c for c in df.columns}
     for candidate in COLUMN_ALIASES.get(key, []):
-        if candidate in df.columns:
-            return candidate
+        real = lower_map.get(candidate.lower())
+        if real is not None:
+            return real
     return None
 
 
@@ -72,11 +74,13 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     - Converte 'Valor' de 'R$ 299,90' para float
     - Parseia 'data' como datetime
     """
+    lower_map = {c.lower(): c for c in df.columns}
     rename_map = {}
     for internal_name, aliases in COLUMN_ALIASES.items():
         for alias in aliases:
-            if alias in df.columns:
-                rename_map[alias] = internal_name
+            real = lower_map.get(alias.lower())
+            if real is not None and real not in rename_map:
+                rename_map[real] = internal_name
                 break
 
     df = df.rename(columns=rename_map).copy()
