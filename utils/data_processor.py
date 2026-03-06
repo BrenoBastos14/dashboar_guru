@@ -120,7 +120,9 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
                 return val
             try:
                 parsed = json.loads(str(val))
-                return parsed.get("co", val)
+                if isinstance(parsed, dict):
+                    return parsed.get("co", val)
+                return val
             except (json.JSONDecodeError, TypeError):
                 return val
         df["utm_content"] = df["utm_content"].apply(_extract_ad_name)
