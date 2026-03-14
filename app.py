@@ -3,9 +3,23 @@ import traceback
 import pandas as pd
 import streamlit as st
 
-from utils.charts import chart_receita_por_periodo
+from utils.charts import (
+    chart_receita_por_periodo,
+    chart_fb_gasto_tempo,
+    chart_fb_roas_campanhas,
+    chart_fb_funil,
+    chart_fb_scatter_eficiencia,
+    chart_fb_spend_vs_receita,
+    chart_fb_ctr_por_campanha,
+)
 from utils.data_processor import clean_data, compute_kpis, filter_data, load_csv
-from utils.facebook_ads import fetch_ad_accounts, fetch_campaign_insights, parse_insights_to_df
+from utils.facebook_ads import (
+    fetch_campaign_insights,
+    fetch_campaign_insights_daily,
+    parse_insights_to_df,
+    parse_daily_insights_to_df,
+    enrich_with_sales,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -399,100 +413,209 @@ if campos_pivot:
     st.divider()
 
 # ---------------------------------------------------------------------------
-# Facebook Ads — Desempenho por Campanha
+# Facebook Ads — Análise de Métricas
 # ---------------------------------------------------------------------------
-_fb_token_ok = "fb_token" in dir() and fb_token  # noqa: F821 — definido no sidebar
 if fb_connect and fb_token and fb_account_id:
-    st.markdown("## 🔵 Facebook Ads — Desempenho por Campanha")
-    with st.spinner("Buscando dados do Facebook Ads..."):
+    st.markdown("## 🔵 Facebook Ads — Análise de Métricas")
+
+    with st.spinner("Carregando dados do Facebook Ads..."):
         try:
             raw_rows = fetch_campaign_insights(fb_token, fb_account_id, fb_date_preset)
+            raw_daily = fetch_campaign_insights_daily(fb_token, fb_account_id, fb_date_preset)
             df_fb = parse_insights_to_df(raw_rows)
+            df_daily = parse_daily_insights_to_df(raw_daily)
+            fb_error = None
+        except Exception as exc:
+            df_fb = pd.DataFrame()
+            df_daily = pd.DataFrame()
+            fb_error = str(exc)
 
-            if df_fb.empty:
-                st.info("Nenhuma campanha encontrada para o período selecionado.")
+    if fb_error:
+        st.error(f"Erro ao conectar ao Facebook Ads: {fb_error}")
+    elif df_fb.empty:
+        st.info("Nenhuma campanha encontrada para o período selecionado.")
+    else:
+        # Cruza com dados de vendas do CSV
+        df_camp = enrich_with_sales(df_fb, df_filtered)
+
+        # Métricas globais
+        total_spend      = df_camp["spend"].sum()
+        total_impressions = int(df_camp["impressions"].sum()) if "impressions" in df_camp.columns else 0
+        total_reach      = int(df_camp["reach"].sum()) if "reach" in df_camp.columns else 0
+        total_clicks     = int(df_camp["clicks"].sum()) if "clicks" in df_camp.columns else 0
+        total_vendas_fb  = int(df_camp["vendas"].sum())
+        receita_total_fb = df_camp["receita"].sum()
+        roas_global      = receita_total_fb / total_spend if total_spend > 0 else 0
+        ctr_medio        = df_camp["ctr"].mean() if "ctr" in df_camp.columns else 0
+        cpc_medio        = (
+            total_spend / total_clicks if total_clicks > 0 else 0
+        )
+        cpa_global       = total_spend / total_vendas_fb if total_vendas_fb > 0 else 0
+
+        # ── Tabs ────────────────────────────────────────────────────────────
+        tab_geral, tab_campanhas, tab_cruzamento = st.tabs([
+            "📊 Visão Geral",
+            "📋 Campanhas",
+            "🔗 Cruzamento com Vendas",
+        ])
+
+        # ── TAB 1: Visão Geral ───────────────────────────────────────────────
+        with tab_geral:
+            # KPI cards — linha 1
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("Gasto Total",    _brl(total_spend))
+            c2.metric("Impressões",     f"{total_impressions:,}")
+            c3.metric("Alcance",        f"{total_reach:,}")
+            c4.metric("Cliques",        f"{total_clicks:,}")
+            c5.metric("CTR Médio",      f"{ctr_medio:.2f}%")
+
+            # KPI cards — linha 2
+            d1, d2, d3, d4, d5 = st.columns(5)
+            d1.metric("CPC Médio",      _brl(cpc_medio))
+            d2.metric("Vendas (CSV)",   f"{total_vendas_fb:,}")
+            d3.metric("Receita (CSV)",  _brl(receita_total_fb))
+            d4.metric("ROAS Global",    f"{roas_global:.2f}×")
+            d5.metric("CPA Global",     _brl(cpa_global))
+
+            st.divider()
+
+            # Funil + Gasto diário
+            col_funil, col_gasto = st.columns([1, 2])
+            with col_funil:
+                st.plotly_chart(
+                    chart_fb_funil(
+                        total_impressions, total_reach, total_clicks, total_vendas_fb
+                    ),
+                    use_container_width=True,
+                )
+            with col_gasto:
+                st.plotly_chart(
+                    chart_fb_gasto_tempo(df_daily),
+                    use_container_width=True,
+                )
+
+        # ── TAB 2: Campanhas ─────────────────────────────────────────────────
+        with tab_campanhas:
+            # Filtro de campanha
+            camp_opts = sorted(df_camp["campaign_name"].dropna().unique().tolist())
+            camp_sel = st.multiselect(
+                "Filtrar campanhas",
+                options=camp_opts,
+                default=camp_opts,
+                key="fb_camp_filter",
+            )
+            df_camp_fil = df_camp[df_camp["campaign_name"].isin(camp_sel)] if camp_sel else df_camp
+
+            # Gráficos
+            col_roas, col_ctr = st.columns(2)
+            with col_roas:
+                st.plotly_chart(
+                    chart_fb_roas_campanhas(df_camp_fil),
+                    use_container_width=True,
+                )
+            with col_ctr:
+                st.plotly_chart(
+                    chart_fb_ctr_por_campanha(df_camp_fil),
+                    use_container_width=True,
+                )
+
+            st.plotly_chart(
+                chart_fb_scatter_eficiencia(df_camp_fil),
+                use_container_width=True,
+            )
+
+            st.subheader("Tabela de Campanhas")
+            _disp_cols = [c for c in [
+                "campaign_name", "spend", "impressions", "clicks", "ctr",
+                "cpc", "reach", "frequency", "vendas", "receita", "ROAS", "CPA", "conv_rate",
+            ] if c in df_camp_fil.columns]
+            _rename = {
+                "campaign_name": "Campanha",
+                "spend":         "Gasto (R$)",
+                "impressions":   "Impressões",
+                "clicks":        "Cliques",
+                "ctr":           "CTR (%)",
+                "cpc":           "CPC (R$)",
+                "reach":         "Alcance",
+                "frequency":     "Freq.",
+                "vendas":        "Vendas",
+                "receita":       "Receita (R$)",
+                "ROAS":          "ROAS",
+                "CPA":           "CPA (R$)",
+                "conv_rate":     "Conv. (%)",
+            }
+            disp = df_camp_fil[_disp_cols].rename(columns=_rename).copy()
+
+            for col in ["Gasto (R$)", "CPC (R$)", "Receita (R$)", "CPA (R$)"]:
+                if col in disp.columns:
+                    disp[col] = disp[col].apply(_brl)
+            for col in ["CTR (%)", "Conv. (%)"]:
+                if col in disp.columns:
+                    disp[col] = disp[col].apply(lambda v: f"{v:.2f}%")
+            if "ROAS" in disp.columns:
+                disp["ROAS"] = disp["ROAS"].apply(lambda v: f"{v:.2f}×")
+            if "Freq." in disp.columns:
+                disp["Freq."] = disp["Freq."].apply(lambda v: f"{v:.1f}")
+
+            st.dataframe(disp, use_container_width=True, hide_index=True)
+
+        # ── TAB 3: Cruzamento com Vendas ─────────────────────────────────────
+        with tab_cruzamento:
+            has_sales_data = df_camp["receita"].sum() > 0
+
+            if not has_sales_data:
+                st.info(
+                    "Nenhuma receita cruzada encontrada. "
+                    "Verifique se o CSV contém a coluna **utm_campaign** "
+                    "com nomes correspondentes às campanhas do Facebook."
+                )
             else:
-                # KPIs de anúncios
-                total_spend = df_fb["spend"].sum() if "spend" in df_fb.columns else 0
-                total_impressions = int(df_fb["impressions"].sum()) if "impressions" in df_fb.columns else 0
-                total_clicks = int(df_fb["clicks"].sum()) if "clicks" in df_fb.columns else 0
-
-                # ROAS global usando receita do CSV filtrado
-                receita_total = kpis.get("receita_total", 0)
-                roas_global = receita_total / total_spend if total_spend > 0 else 0
-
-                fa1, fa2, fa3, fa4 = st.columns(4)
-                fa1.metric("Gasto Total", _brl(total_spend))
-                fa2.metric("Impressões", f"{total_impressions:,}")
-                fa3.metric("Cliques", f"{total_clicks:,}")
-                fa4.metric("ROAS (global)", f"{roas_global:.2f}×")
+                # Gráfico Gasto vs Receita
+                st.plotly_chart(
+                    chart_fb_spend_vs_receita(df_camp),
+                    use_container_width=True,
+                )
 
                 st.divider()
 
-                # Tabela de campanhas com métricas cruzadas
-                if "utm_campaign" in df_filtered.columns and "valor" in df_filtered.columns:
-                    # Receita por campanha no CSV
-                    receita_por_camp = (
-                        df_filtered[df_filtered["utm_campaign"].notna()]
-                        .groupby("utm_campaign")["valor"]
-                        .agg(receita="sum", vendas="count")
-                        .reset_index()
-                        .rename(columns={"utm_campaign": "campaign_name"})
-                    )
-                    df_camp = df_fb.merge(receita_por_camp, on="campaign_name", how="left")
-                    df_camp["receita"] = df_camp["receita"].fillna(0)
-                    df_camp["vendas"] = df_camp["vendas"].fillna(0).astype(int)
-                else:
-                    df_camp = df_fb.copy()
-                    df_camp["receita"] = 0
-                    df_camp["vendas"] = 0
+                # Ranking por ROAS
+                st.subheader("Ranking por ROAS")
+                df_rank = df_camp[df_camp["ROAS"] > 0].sort_values("ROAS", ascending=False).copy()
+                df_rank["Rentável?"] = df_rank["ROAS"].apply(lambda v: "✅ Sim" if v >= 1 else "❌ Não")
 
-                # Métricas calculadas
-                df_camp["ROAS"] = df_camp.apply(
-                    lambda r: r["receita"] / r["spend"] if r.get("spend", 0) > 0 else 0, axis=1
-                )
-                df_camp["CPA (R$)"] = df_camp.apply(
-                    lambda r: r["spend"] / r["vendas"] if r.get("vendas", 0) > 0 else 0, axis=1
-                )
-                df_camp["Conv. (%)"] = df_camp.apply(
-                    lambda r: (r["vendas"] / r["clicks"] * 100) if r.get("clicks", 0) > 0 else 0, axis=1
-                )
-
-                # Formata para exibição
-                display_fb = df_camp[
-                    [c for c in ["campaign_name", "spend", "impressions", "clicks", "ctr",
-                                 "cpc", "reach", "vendas", "receita", "ROAS", "CPA (R$)", "Conv. (%)"]
-                     if c in df_camp.columns]
-                ].copy()
-
-                rename_fb = {
+                rank_cols = ["campaign_name", "spend", "receita", "ROAS", "CPA", "conv_rate", "vendas", "Rentável?"]
+                rank_cols = [c for c in rank_cols if c in df_rank.columns]
+                rank_disp = df_rank[rank_cols].rename(columns={
                     "campaign_name": "Campanha",
-                    "spend": "Gasto (R$)",
-                    "impressions": "Impressões",
-                    "clicks": "Cliques",
-                    "ctr": "CTR (%)",
-                    "cpc": "CPC (R$)",
-                    "reach": "Alcance",
-                    "vendas": "Vendas",
-                    "receita": "Receita (R$)",
-                }
-                display_fb = display_fb.rename(columns=rename_fb)
+                    "spend":         "Gasto (R$)",
+                    "receita":       "Receita (R$)",
+                    "ROAS":          "ROAS",
+                    "CPA":           "CPA (R$)",
+                    "conv_rate":     "Conv. (%)",
+                    "vendas":        "Vendas",
+                }).copy()
 
-                for col in ["Gasto (R$)", "CPC (R$)", "Receita (R$)", "CPA (R$)"]:
-                    if col in display_fb.columns:
-                        display_fb[col] = display_fb[col].apply(_brl)
+                for col in ["Gasto (R$)", "Receita (R$)", "CPA (R$)"]:
+                    if col in rank_disp.columns:
+                        rank_disp[col] = rank_disp[col].apply(_brl)
+                if "ROAS" in rank_disp.columns:
+                    rank_disp["ROAS"] = rank_disp["ROAS"].apply(lambda v: f"{v:.2f}×")
+                if "Conv. (%)" in rank_disp.columns:
+                    rank_disp["Conv. (%)"] = rank_disp["Conv. (%)"].apply(lambda v: f"{v:.2f}%")
 
-                for col in ["CTR (%)", "Conv. (%)"]:
-                    if col in display_fb.columns:
-                        display_fb[col] = display_fb[col].apply(lambda v: f"{v:.2f}%")
+                st.dataframe(rank_disp, use_container_width=True, hide_index=True)
 
-                if "ROAS" in display_fb.columns:
-                    display_fb["ROAS"] = display_fb["ROAS"].apply(lambda v: f"{v:.2f}×")
+                # Resumo de campanhas rentáveis vs não-rentáveis
+                st.divider()
+                rentaveis    = (df_camp["ROAS"] >= 1).sum()
+                nao_rentaveis = (df_camp["ROAS"] > 0) & (df_camp["ROAS"] < 1)
+                nao_rentaveis = nao_rentaveis.sum()
+                sem_dados    = (df_camp["ROAS"] == 0).sum()
 
-                st.dataframe(display_fb, use_container_width=True, hide_index=True)
-
-        except Exception as e:
-            st.error(f"Erro ao buscar dados do Facebook Ads: {e}")
+                r1, r2, r3 = st.columns(3)
+                r1.metric("Campanhas Rentáveis (ROAS ≥ 1)",    f"{rentaveis}")
+                r2.metric("Campanhas com ROAS < 1",            f"{nao_rentaveis}")
+                r3.metric("Campanhas sem dados de receita",    f"{sem_dados}")
 
     st.divider()
 
