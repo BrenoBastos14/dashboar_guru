@@ -5,6 +5,7 @@ import streamlit as st
 
 from utils.charts import chart_receita_por_periodo
 from utils.data_processor import clean_data, compute_kpis, filter_data, load_csv
+from utils.facebook_ads import fetch_ad_accounts, fetch_campaign_insights, parse_insights_to_df
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +67,35 @@ with st.sidebar:
         type=["csv"],
         help="Exporte o relatório de vendas no Guru Manager e faça upload aqui.",
     )
+
+    st.divider()
+
+    # ------------------------------------------------------------------
+    # Facebook Ads — credenciais
+    # ------------------------------------------------------------------
+    with st.expander("🔵 Facebook Ads (opcional)", expanded=False):
+        fb_token = st.text_input(
+            "Access Token",
+            type="password",
+            placeholder="EAAxxxxxx...",
+            help="Token de acesso da Meta Marketing API.",
+        )
+        fb_account_id = st.text_input(
+            "Ad Account ID",
+            placeholder="act_123456789  ou  123456789",
+            help="ID da conta de anúncios (com ou sem prefixo 'act_').",
+        )
+        fb_date_preset = st.selectbox(
+            "Período",
+            options=["last_7d", "last_30d", "this_month", "last_month"],
+            format_func=lambda x: {
+                "last_7d": "Últimos 7 dias",
+                "last_30d": "Últimos 30 dias",
+                "this_month": "Este mês",
+                "last_month": "Mês passado",
+            }[x],
+        )
+        fb_connect = st.button("Conectar Facebook Ads", type="primary")
 
     st.divider()
     st.subheader("Filtros")
@@ -365,6 +395,104 @@ if campos_pivot:
 
         with st.expander(f"**{label}**", expanded=True):
             st.dataframe(styled, use_container_width=True)
+
+    st.divider()
+
+# ---------------------------------------------------------------------------
+# Facebook Ads — Desempenho por Campanha
+# ---------------------------------------------------------------------------
+_fb_token_ok = "fb_token" in dir() and fb_token  # noqa: F821 — definido no sidebar
+if fb_connect and fb_token and fb_account_id:
+    st.markdown("## 🔵 Facebook Ads — Desempenho por Campanha")
+    with st.spinner("Buscando dados do Facebook Ads..."):
+        try:
+            raw_rows = fetch_campaign_insights(fb_token, fb_account_id, fb_date_preset)
+            df_fb = parse_insights_to_df(raw_rows)
+
+            if df_fb.empty:
+                st.info("Nenhuma campanha encontrada para o período selecionado.")
+            else:
+                # KPIs de anúncios
+                total_spend = df_fb["spend"].sum() if "spend" in df_fb.columns else 0
+                total_impressions = int(df_fb["impressions"].sum()) if "impressions" in df_fb.columns else 0
+                total_clicks = int(df_fb["clicks"].sum()) if "clicks" in df_fb.columns else 0
+
+                # ROAS global usando receita do CSV filtrado
+                receita_total = kpis.get("receita_total", 0)
+                roas_global = receita_total / total_spend if total_spend > 0 else 0
+
+                fa1, fa2, fa3, fa4 = st.columns(4)
+                fa1.metric("Gasto Total", _brl(total_spend))
+                fa2.metric("Impressões", f"{total_impressions:,}")
+                fa3.metric("Cliques", f"{total_clicks:,}")
+                fa4.metric("ROAS (global)", f"{roas_global:.2f}×")
+
+                st.divider()
+
+                # Tabela de campanhas com métricas cruzadas
+                if "utm_campaign" in df_filtered.columns and "valor" in df_filtered.columns:
+                    # Receita por campanha no CSV
+                    receita_por_camp = (
+                        df_filtered[df_filtered["utm_campaign"].notna()]
+                        .groupby("utm_campaign")["valor"]
+                        .agg(receita="sum", vendas="count")
+                        .reset_index()
+                        .rename(columns={"utm_campaign": "campaign_name"})
+                    )
+                    df_camp = df_fb.merge(receita_por_camp, on="campaign_name", how="left")
+                    df_camp["receita"] = df_camp["receita"].fillna(0)
+                    df_camp["vendas"] = df_camp["vendas"].fillna(0).astype(int)
+                else:
+                    df_camp = df_fb.copy()
+                    df_camp["receita"] = 0
+                    df_camp["vendas"] = 0
+
+                # Métricas calculadas
+                df_camp["ROAS"] = df_camp.apply(
+                    lambda r: r["receita"] / r["spend"] if r.get("spend", 0) > 0 else 0, axis=1
+                )
+                df_camp["CPA (R$)"] = df_camp.apply(
+                    lambda r: r["spend"] / r["vendas"] if r.get("vendas", 0) > 0 else 0, axis=1
+                )
+                df_camp["Conv. (%)"] = df_camp.apply(
+                    lambda r: (r["vendas"] / r["clicks"] * 100) if r.get("clicks", 0) > 0 else 0, axis=1
+                )
+
+                # Formata para exibição
+                display_fb = df_camp[
+                    [c for c in ["campaign_name", "spend", "impressions", "clicks", "ctr",
+                                 "cpc", "reach", "vendas", "receita", "ROAS", "CPA (R$)", "Conv. (%)"]
+                     if c in df_camp.columns]
+                ].copy()
+
+                rename_fb = {
+                    "campaign_name": "Campanha",
+                    "spend": "Gasto (R$)",
+                    "impressions": "Impressões",
+                    "clicks": "Cliques",
+                    "ctr": "CTR (%)",
+                    "cpc": "CPC (R$)",
+                    "reach": "Alcance",
+                    "vendas": "Vendas",
+                    "receita": "Receita (R$)",
+                }
+                display_fb = display_fb.rename(columns=rename_fb)
+
+                for col in ["Gasto (R$)", "CPC (R$)", "Receita (R$)", "CPA (R$)"]:
+                    if col in display_fb.columns:
+                        display_fb[col] = display_fb[col].apply(_brl)
+
+                for col in ["CTR (%)", "Conv. (%)"]:
+                    if col in display_fb.columns:
+                        display_fb[col] = display_fb[col].apply(lambda v: f"{v:.2f}%")
+
+                if "ROAS" in display_fb.columns:
+                    display_fb["ROAS"] = display_fb["ROAS"].apply(lambda v: f"{v:.2f}×")
+
+                st.dataframe(display_fb, use_container_width=True, hide_index=True)
+
+        except Exception as e:
+            st.error(f"Erro ao buscar dados do Facebook Ads: {e}")
 
     st.divider()
 
