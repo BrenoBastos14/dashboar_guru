@@ -9,26 +9,6 @@ const ANALYSIS_PROMPT = `Você é um especialista em análise de criativos de an
 Analise este vídeo/imagens de anúncio e retorne uma análise detalhada no seguinte formato JSON (responda APENAS o JSON puro, sem markdown, sem backticks, sem texto antes ou depois):
 
 {
-  "roteiro": {
-    "hook": {
-      "texto": "Transcreva exatamente o texto/fala do hook (primeiros 3-5 segundos ou até a atenção ser capturada)",
-      "nota": "8",
-      "avaliacao": "Forte/Médio/Fraco",
-      "melhoria": "Sugestão específica para melhorar o hook do roteiro"
-    },
-    "body": {
-      "texto": "Transcreva exatamente o texto/fala do corpo principal do anúncio (desenvolvimento, argumentos, prova social)",
-      "nota": "7",
-      "avaliacao": "Forte/Médio/Fraco",
-      "melhoria": "Sugestão específica para melhorar o body do roteiro"
-    },
-    "cta": {
-      "texto": "Transcreva exatamente o texto/fala do CTA (chamada para ação final)",
-      "nota": "6",
-      "avaliacao": "Forte/Médio/Fraco",
-      "melhoria": "Sugestão específica para melhorar o CTA do roteiro"
-    }
-  },
   "hook_visual": {
     "descricao": "Descreva o que acontece nos primeiros 3 segundos do vídeo",
     "elementos": ["lista dos elementos visuais usados no hook"],
@@ -139,22 +119,14 @@ export async function POST(request: NextRequest) {
 
     let analysis: Record<string, unknown>;
     try {
-      const start = analysisText.indexOf("{");
-      const end = analysisText.lastIndexOf("}");
-      if (start === -1 || end === -1) throw new Error("No JSON found");
-      const jsonStr = analysisText.slice(start, end + 1);
-      analysis = JSON.parse(jsonStr);
+      const cleaned = analysisText
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+      analysis = JSON.parse(cleaned);
     } catch {
-      try {
-        const cleaned = analysisText
-          .replace(/^```json\s*/i, "")
-          .replace(/^```\s*/i, "")
-          .replace(/\s*```$/i, "")
-          .trim();
-        analysis = JSON.parse(cleaned);
-      } catch {
-        analysis = { raw: analysisText };
-      }
+      analysis = { raw: analysisText };
     }
 
     return NextResponse.json({ analysis });

@@ -4,19 +4,7 @@ import { useState, useRef, useCallback, DragEvent, ChangeEvent } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface RoteiroSection {
-  texto?: string;
-  nota?: string;
-  avaliacao?: string;
-  melhoria?: string;
-}
-
 interface AnalysisResult {
-  roteiro?: {
-    hook?: RoteiroSection;
-    body?: RoteiroSection;
-    cta?: RoteiroSection;
-  };
   hook_visual?: {
     descricao?: string;
     elementos?: string[];
@@ -202,28 +190,6 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
     if (transcription) {
       lines.push("TRANSCRIÇÃO:", transcription, "");
     }
-    if (analysis.roteiro) {
-      lines.push("── ANÁLISE DO ROTEIRO ──", "");
-      const { hook, body, cta } = analysis.roteiro;
-      if (hook) {
-        lines.push(`HOOK (${hook.avaliacao || ""} · ${hook.nota || ""}/10):`);
-        if (hook.texto) lines.push(`"${hook.texto}"`);
-        if (hook.melhoria) lines.push(`💡 ${hook.melhoria}`);
-        lines.push("");
-      }
-      if (body) {
-        lines.push(`BODY (${body.avaliacao || ""} · ${body.nota || ""}/10):`);
-        if (body.texto) lines.push(`"${body.texto}"`);
-        if (body.melhoria) lines.push(`💡 ${body.melhoria}`);
-        lines.push("");
-      }
-      if (cta) {
-        lines.push(`CTA (${cta.avaliacao || ""} · ${cta.nota || ""}/10):`);
-        if (cta.texto) lines.push(`"${cta.texto}"`);
-        if (cta.melhoria) lines.push(`💡 ${cta.melhoria}`);
-        lines.push("");
-      }
-    }
     lines.push(
       `HOOK VISUAL: ${analysis.hook_visual?.avaliacao || ""}`,
       analysis.hook_visual?.descricao || "",
@@ -294,84 +260,6 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
           <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>
             {transcription}
           </p>
-        </div>
-      )}
-
-      {/* Roteiro: Hook / Body / CTA */}
-      {analysis.roteiro && (
-        <div className="card p-6">
-          <p className="section-title mb-5">Análise do Roteiro</p>
-          <div className="space-y-5">
-            {(["hook", "body", "cta"] as const).map((part) => {
-              const section = analysis.roteiro?.[part];
-              if (!section) return null;
-              const labels = { hook: "Hook", body: "Body", cta: "CTA" };
-              const icons = { hook: "🎣", body: "💬", cta: "🎯" };
-              const nota = parseInt(section.nota || "0") || 0;
-              const color = getScoreColor(nota);
-              return (
-                <div
-                  key={part}
-                  style={{
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    borderRadius: 10,
-                    padding: "16px 20px",
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span>{icons[part]}</span>
-                      <span className="font-bold text-white">{labels[part]}</span>
-                      {section.avaliacao && (
-                        <span className={`badge ${getAvaliacaoBadge(section.avaliacao)}`}>
-                          {section.avaliacao}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="score-bar-track" style={{ width: 80 }}>
-                        <div
-                          className="score-bar-fill"
-                          style={{ width: `${nota * 10}%`, background: color }}
-                        />
-                      </div>
-                      <span className="font-bold font-mono text-sm" style={{ color }}>
-                        {nota}/10
-                      </span>
-                    </div>
-                  </div>
-                  {section.texto && (
-                    <p
-                      className="text-sm leading-relaxed mb-3 italic"
-                      style={{
-                        color: "rgba(255,255,255,0.7)",
-                        borderLeft: "2px solid rgba(99,102,241,0.4)",
-                        paddingLeft: 12,
-                      }}
-                    >
-                      &ldquo;{section.texto}&rdquo;
-                    </p>
-                  )}
-                  {section.melhoria && (
-                    <div
-                      className="flex gap-2 text-sm"
-                      style={{
-                        background: "rgba(234,179,8,0.06)",
-                        border: "1px solid rgba(234,179,8,0.15)",
-                        borderRadius: 7,
-                        padding: "8px 12px",
-                        color: "rgba(255,255,255,0.6)",
-                      }}
-                    >
-                      <span style={{ color: "#eab308", flexShrink: 0 }}>💡</span>
-                      <span>{section.melhoria}</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 
