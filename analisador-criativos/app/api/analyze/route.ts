@@ -256,17 +256,27 @@ export async function POST(request: NextRequest) {
     // Step 4: Analyze with Gemini
     const analysisText = await analyzeWithGemini(fileUri, mimeType);
 
-    // Parse JSON from response
+    // Parse JSON from response — robust extraction
     let analysis: Record<string, unknown>;
     try {
-      const cleaned = analysisText
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-      analysis = JSON.parse(cleaned);
+      // Find the outermost JSON object even if there's text around it
+      const start = analysisText.indexOf("{");
+      const end = analysisText.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error("No JSON found");
+      const jsonStr = analysisText.slice(start, end + 1);
+      analysis = JSON.parse(jsonStr);
     } catch {
-      analysis = { raw: analysisText };
+      // Last resort: try cleaning markdown fences
+      try {
+        const cleaned = analysisText
+          .replace(/^```json\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```$/i, "")
+          .trim();
+        analysis = JSON.parse(cleaned);
+      } catch {
+        analysis = { raw: analysisText };
+      }
     }
 
     return NextResponse.json({ transcription, analysis });

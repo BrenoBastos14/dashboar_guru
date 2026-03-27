@@ -139,14 +139,22 @@ export async function POST(request: NextRequest) {
 
     let analysis: Record<string, unknown>;
     try {
-      const cleaned = analysisText
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-      analysis = JSON.parse(cleaned);
+      const start = analysisText.indexOf("{");
+      const end = analysisText.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error("No JSON found");
+      const jsonStr = analysisText.slice(start, end + 1);
+      analysis = JSON.parse(jsonStr);
     } catch {
-      analysis = { raw: analysisText };
+      try {
+        const cleaned = analysisText
+          .replace(/^```json\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```$/i, "")
+          .trim();
+        analysis = JSON.parse(cleaned);
+      } catch {
+        analysis = { raw: analysisText };
+      }
     }
 
     return NextResponse.json({ analysis });
