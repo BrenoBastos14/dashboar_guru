@@ -59,26 +59,6 @@ Analise este vídeo/imagens de anúncio e retorne uma análise detalhada no segu
   "nota_geral": {
     "score": "7",
     "justificativa": "Justificativa breve da nota"
-  },
-  "roteiro": {
-    "hook": {
-      "texto": "Trecho exato da fala/texto que representa o hook do anuncio (primeiros segundos ate capturar atencao)",
-      "nota": "8",
-      "avaliacao": "Forte/Medio/Fraco",
-      "melhoria": "O que poderia ser melhorado especificamente no hook"
-    },
-    "body": {
-      "texto": "Trecho exato da fala/texto que representa o desenvolvimento/argumento principal do anuncio",
-      "nota": "7",
-      "avaliacao": "Forte/Medio/Fraco",
-      "melhoria": "O que poderia ser melhorado especificamente no body"
-    },
-    "cta": {
-      "texto": "Trecho exato da fala/texto que representa a chamada para acao do anuncio",
-      "nota": "6",
-      "avaliacao": "Forte/Medio/Fraco",
-      "melhoria": "O que poderia ser melhorado especificamente no CTA"
-    }
   }
 }`;
 
@@ -256,12 +236,15 @@ export async function POST(request: NextRequest) {
     // Step 4: Analyze with Gemini
     const analysisText = await analyzeWithGemini(fileUri, mimeType);
 
-    // Parse JSON — extract outermost {} to handle any surrounding text
+    // Parse JSON from response
     let analysis: Record<string, unknown>;
     try {
-      const start = analysisText.indexOf("{");
-      const end = analysisText.lastIndexOf("}");
-      analysis = JSON.parse(analysisText.slice(start, end + 1));
+      const cleaned = analysisText
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+      analysis = JSON.parse(cleaned);
     } catch {
       analysis = { raw: analysisText };
     }
