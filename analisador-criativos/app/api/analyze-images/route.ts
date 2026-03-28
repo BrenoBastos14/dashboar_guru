@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readFile } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
+import { FeedbackEntry } from "../feedback/route";
 
 export const maxDuration = 120;
 
@@ -94,8 +98,30 @@ export async function POST(request: NextRequest) {
       })
     );
 
+    // Load history and build context
+    let historyContext = "";
+    try {
+      const DATA_DIR = process.env.VERCEL ? "/tmp" : join(process.cwd(), "data");
+      const DB_PATH = join(DATA_DIR, "feedback.json");
+      if (existsSync(DB_PATH)) {
+        const history: FeedbackEntry[] = JSON.parse(await readFile(DB_PATH, "utf-8"));
+        if (history.length > 0) {
+          const escalaram = history.filter((h) => h.resultado === "Escalou" || h.resultado === "Bom");
+          const naoFuncionaram = history.filter((h) => h.resultado === "Ruim" || h.resultado === "Morreu rápido");
+          historyContext = `\n\n---\nCONTEXTO HISTÓRICO DESTA CONTA:\nTotal analisados: ${history.length}`;
+          if (escalaram.length > 0) {
+            historyContext += `\nFuncionaram: ${escalaram.map((h) => `${h.formato} (Hook:${h.hookAvaliacao}, ROAS:${h.roas})`).slice(0, 5).join(" | ")}`;
+          }
+          if (naoFuncionaram.length > 0) {
+            historyContext += `\nNão funcionaram: ${naoFuncionaram.map((h) => `${h.formato} (Hook:${h.hookAvaliacao})`).slice(0, 5).join(" | ")}`;
+          }
+          historyContext += "\n---";
+        }
+      }
+    } catch { /* ignore */ }
+
     // Build Gemini request with all images + prompt
-    const parts = [...imageParts, { text: ANALYSIS_PROMPT }];
+    const parts = [...imageParts, { text: ANALYSIS_PROMPT + historyContext }];
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,

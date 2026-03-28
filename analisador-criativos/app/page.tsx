@@ -1,6 +1,20 @@
 "use client";
 
-import { useState, useRef, useCallback, DragEvent, ChangeEvent } from "react";
+import { useState, useRef, useCallback, useEffect, DragEvent, ChangeEvent } from "react";
+
+interface FeedbackEntry {
+  id: string;
+  date: string;
+  videoName: string;
+  notaGemini: number;
+  formato: string;
+  resultado: string;
+  gasto: string;
+  roas: string;
+  observacoes: string;
+  hookAvaliacao: string;
+  ctaAvaliacao: string;
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -457,13 +471,302 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
       </div>
 
       {/* Export */}
-      <div className="flex justify-center pt-2 pb-8">
+      <div className="flex justify-center pt-2 pb-4">
         <button
           onClick={exportReport}
           className="px-6 py-3 rounded-xl font-semibold text-white gradient-bg flex items-center gap-2 hover:opacity-90 transition-opacity"
         >
           <span>📋</span> Copiar Relatório Completo
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Feedback Form ────────────────────────────────────────────────────────────
+
+function FeedbackForm({
+  analysis,
+  videoName,
+  onSaved,
+}: {
+  analysis: AnalysisResult;
+  videoName: string;
+  onSaved: () => void;
+}) {
+  const [resultado, setResultado] = useState("");
+  const [gasto, setGasto] = useState("");
+  const [roas, setRoas] = useState("");
+  const [observacoes, setObservacoes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    if (!resultado) return;
+    setSaving(true);
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoName,
+          notaGemini: parseInt(analysis.nota_geral?.score || "0") || 0,
+          formato: analysis.formato?.tipo || "",
+          hookAvaliacao: analysis.hook_visual?.avaliacao || "",
+          ctaAvaliacao: analysis.cta_visual?.tipo || "",
+          resultado,
+          gasto,
+          roas,
+          observacoes,
+        }),
+      });
+      setSaved(true);
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resultadoOpts = ["Escalou", "Bom", "Médio", "Ruim", "Morreu rápido"];
+  const resultadoColors: Record<string, string> = {
+    "Escalou": "#22c55e",
+    "Bom": "#86efac",
+    "Médio": "#eab308",
+    "Ruim": "#f97316",
+    "Morreu rápido": "#ef4444",
+  };
+
+  if (saved) {
+    return (
+      <div
+        className="card p-6 text-center animate-fade-in"
+        style={{ border: "1px solid rgba(34,197,94,0.3)", background: "rgba(34,197,94,0.05)" }}
+      >
+        <p className="text-2xl mb-2">✅</p>
+        <p className="font-semibold text-white">Resultado registrado!</p>
+        <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
+          Próximas análises serão calibradas com esse histórico.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card p-6 animate-fade-in">
+      <div className="flex items-center gap-2 mb-5">
+        <span className="text-xl">📊</span>
+        <div>
+          <p className="font-bold text-white">Registrar Resultado do Anúncio</p>
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+            Isso treina a IA para analisar seus próximos criativos com mais precisão
+          </p>
+        </div>
+      </div>
+
+      {/* Resultado */}
+      <div className="mb-4">
+        <p className="section-title mb-2">Como foi o desempenho?</p>
+        <div className="flex flex-wrap gap-2">
+          {resultadoOpts.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setResultado(opt)}
+              className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+              style={{
+                border: `1px solid ${resultado === opt ? resultadoColors[opt] : "rgba(255,255,255,0.1)"}`,
+                background: resultado === opt ? `${resultadoColors[opt]}20` : "transparent",
+                color: resultado === opt ? resultadoColors[opt] : "rgba(255,255,255,0.5)",
+              }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Gasto + ROAS */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <p className="section-title mb-1">Gasto total</p>
+          <input
+            type="text"
+            placeholder="Ex: R$500"
+            value={gasto}
+            onChange={(e) => setGasto(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "#e2e8f0",
+            }}
+          />
+        </div>
+        <div>
+          <p className="section-title mb-1">ROAS / Resultado</p>
+          <input
+            type="text"
+            placeholder="Ex: 3.5x ou R$2.000"
+            value={roas}
+            onChange={(e) => setRoas(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "#e2e8f0",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Observações */}
+      <div className="mb-5">
+        <p className="section-title mb-1">O que você percebeu? (opcional)</p>
+        <textarea
+          placeholder="Ex: O hook foi muito direto, público reagiu bem ao depoimento..."
+          value={observacoes}
+          onChange={(e) => setObservacoes(e.target.value)}
+          rows={3}
+          className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#e2e8f0",
+          }}
+        />
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={!resultado || saving}
+        className="w-full py-3 rounded-xl font-bold text-white transition-all"
+        style={{
+          background: !resultado ? "rgba(99,102,241,0.2)" : "linear-gradient(135deg,#6366f1,#8b5cf6)",
+          cursor: !resultado ? "not-allowed" : "pointer",
+        }}
+      >
+        {saving ? "Salvando..." : "Salvar Resultado"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Histórico Panel ──────────────────────────────────────────────────────────
+
+function HistoricoPanel({ onClose }: { onClose: () => void }) {
+  const [entries, setEntries] = useState<FeedbackEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/feedback")
+      .then((r) => r.json())
+      .then((data) => setEntries(Array.isArray(data) ? data : []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    await fetch("/api/feedback", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const resultadoColors: Record<string, string> = {
+    "Escalou": "#22c55e",
+    "Bom": "#86efac",
+    "Médio": "#eab308",
+    "Ruim": "#f97316",
+    "Morreu rápido": "#ef4444",
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl card p-6 animate-slide-up overflow-y-auto"
+        style={{ maxHeight: "80vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-bold text-white text-lg">Histórico de Criativos</h2>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+              {entries.length} resultado(s) registrado(s)
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-sm px-3 py-1 rounded-lg"
+            style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}
+          >
+            Fechar
+          </button>
+        </div>
+
+        {loading && (
+          <p className="text-center py-8" style={{ color: "rgba(255,255,255,0.4)" }}>
+            Carregando...
+          </p>
+        )}
+
+        {!loading && entries.length === 0 && (
+          <p className="text-center py-8" style={{ color: "rgba(255,255,255,0.3)" }}>
+            Nenhum resultado registrado ainda.
+          </p>
+        )}
+
+        <div className="space-y-3">
+          {entries.map((e) => (
+            <div
+              key={e.id}
+              className="p-4 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span
+                      className="badge"
+                      style={{
+                        background: `${resultadoColors[e.resultado] || "#6366f1"}20`,
+                        color: resultadoColors[e.resultado] || "#818cf8",
+                        border: `1px solid ${resultadoColors[e.resultado] || "#6366f1"}40`,
+                      }}
+                    >
+                      {e.resultado}
+                    </span>
+                    {e.formato && <span className="badge badge-default">{e.formato}</span>}
+                    <span className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.35)" }}>
+                      Nota: {e.notaGemini}/10
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-white truncate">{e.videoName}</p>
+                  <div className="flex gap-4 mt-1 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    {e.gasto && <span>Gasto: {e.gasto}</span>}
+                    {e.roas && <span>ROAS: {e.roas}</span>}
+                    <span>{new Date(e.date).toLocaleDateString("pt-BR")}</span>
+                  </div>
+                  {e.observacoes && (
+                    <p className="text-xs mt-2 italic" style={{ color: "rgba(255,255,255,0.5)" }}>
+                      &ldquo;{e.observacoes}&rdquo;
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleDelete(e.id)}
+                  className="text-xs px-2 py-1 rounded flex-shrink-0"
+                  style={{ color: "rgba(239,68,68,0.6)", border: "1px solid rgba(239,68,68,0.2)" }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -484,6 +787,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const [manualTranscription, setManualTranscription] = useState("");
   const [showManual, setShowManual] = useState(false);
+  const [showHistorico, setShowHistorico] = useState(false);
+  const [feedbackSaved, setFeedbackSaved] = useState(false);
 
   const handleVideoFiles = (files: File[]) => {
     const f = files[0];
@@ -570,6 +875,7 @@ export default function Home() {
     setTranscription("");
     setManualTranscription("");
     setShowManual(false);
+    setFeedbackSaved(false);
   };
 
   const isProcessing = step === "uploading" || step === "transcribing" || step === "analyzing";
@@ -618,8 +924,17 @@ export default function Home() {
               Nova análise
             </button>
           )}
+          <button
+            onClick={() => setShowHistorico(true)}
+            className="text-sm px-4 py-1.5 rounded-lg flex items-center gap-1.5"
+            style={{ border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8" }}
+          >
+            📊 Histórico
+          </button>
         </div>
       </header>
+
+      {showHistorico && <HistoricoPanel onClose={() => setShowHistorico(false)} />}
 
       <main className="max-w-5xl mx-auto px-6 py-10">
         {/* Upload Screen */}
@@ -799,6 +1114,22 @@ export default function Home() {
               </div>
             </div>
             <ResultsView analysis={analysis} transcription={transcription || manualTranscription} />
+
+            {!feedbackSaved && (
+              <FeedbackForm
+                analysis={analysis}
+                videoName={mode === "video" ? (videoFile?.name || "") : `${imageFiles.length} imagem(ns)`}
+                onSaved={() => setFeedbackSaved(true)}
+              />
+            )}
+            {feedbackSaved && (
+              <div
+                className="card p-5 text-center animate-fade-in mb-8"
+                style={{ border: "1px solid rgba(34,197,94,0.3)", background: "rgba(34,197,94,0.05)" }}
+              >
+                <p className="font-semibold text-white">✅ Resultado registrado — próximas análises serão calibradas com esse histórico.</p>
+              </div>
+            )}
           </div>
         )}
       </main>

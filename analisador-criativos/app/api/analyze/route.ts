@@ -5,6 +5,7 @@ import OpenAI from "openai";
 import { createReadStream, existsSync } from "fs";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { FeedbackEntry } from "../feedback/route";
 
 export const maxDuration = 120;
 
@@ -138,7 +139,49 @@ async function waitForGeminiProcessing(fileName: string): Promise<string> {
   throw new Error("Timeout: arquivo não processado pelo Gemini a tempo");
 }
 
-async function analyzeWithGemini(fileUri: string, mimeType: string): Promise<string> {
+function buildHistoryContext(history: FeedbackEntry[]): string {
+  if (history.length === 0) return "";
+
+  const escalaram = history.filter((h) => h.resultado === "Escalou" || h.resultado === "Bom");
+  const naoFuncionaram = history.filter((h) => h.resultado === "Ruim" || h.resultado === "Morreu rápido");
+
+  let ctx = `\n\n---\nCONTEXTO HISTÓRICO DESTA CONTA (use isso para calibrar sua análise):\n`;
+  ctx += `Total de criativos analisados com resultado registrado: ${history.length}\n`;
+
+  if (escalaram.length > 0) {
+    ctx += `\nCriativos que FUNCIONARAM (${escalaram.length}):\n`;
+    escalaram.slice(0, 5).forEach((h) => {
+      ctx += `- Formato: ${h.formato} | Hook: ${h.hookAvaliacao} | CTA: ${h.ctaAvaliacao} | Nota: ${h.notaGemini}/10 | ROAS: ${h.roas} | Obs: ${h.observacoes}\n`;
+    });
+  }
+
+  if (naoFuncionaram.length > 0) {
+    ctx += `\nCriativos que NÃO FUNCIONARAM (${naoFuncionaram.length}):\n`;
+    naoFuncionaram.slice(0, 5).forEach((h) => {
+      ctx += `- Formato: ${h.formato} | Hook: ${h.hookAvaliacao} | CTA: ${h.ctaAvaliacao} | Nota: ${h.notaGemini}/10 | Obs: ${h.observacoes}\n`;
+    });
+  }
+
+  ctx += `\nUse esse histórico para identificar padrões e dar um feedback mais preciso sobre o que tende a funcionar ou não nesta conta.\n---`;
+  return ctx;
+}
+
+async function loadFeedbackHistory(): Promise<FeedbackEntry[]> {
+  try {
+    const DATA_DIR = process.env.VERCEL ? "/tmp" : join(process.cwd(), "data");
+    const DB_PATH = join(DATA_DIR, "feedback.json");
+    if (!existsSync(DB_PATH)) return [];
+    const raw = await readFile(DB_PATH, "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+async function analyzeWithGemini(fileUri: string, mimeType: string, history: FeedbackEntry[]): Promise<string> {
+  const historyContext = buildHistoryContext(history);
+  const prompt = ANALYSIS_PROMPT + historyContext;
+
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
     {
@@ -149,7 +192,7 @@ async function analyzeWithGemini(fileUri: string, mimeType: string): Promise<str
           {
             parts: [
               { file_data: { mime_type: mimeType, file_uri: fileUri } },
-              { text: ANALYSIS_PROMPT },
+              { text: prompt },
             ],
           },
         ],
@@ -233,8 +276,9 @@ export async function POST(request: NextRequest) {
     // Step 3: Wait for Gemini to process
     const fileUri = await waitForGeminiProcessing(fileName);
 
-    // Step 4: Analyze with Gemini
-    const analysisText = await analyzeWithGemini(fileUri, mimeType);
+    // Step 4: Load history + Analyze with Gemini
+    const history = await loadFeedbackHistory();
+    const analysisText = await analyzeWithGemini(fileUri, mimeType, history);
 
     // Parse JSON from response
     let analysis: Record<string, unknown>;
