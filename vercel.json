@@ -2,16 +2,5 @@
   "buildCommand": "cd analisador-criativos && npm install && npm run build",
   "outputDirectory": "analisador-criativos/.next",
   "installCommand": "cd analisador-criativos && npm install",
-  "framework": "nextjs",
-  "functions": {
-    "analisador-criativos/app/api/analyze/route.ts": {
-      "maxDuration": 120
-    },
-    "analisador-criativos/app/api/analyze-images/route.ts": {
-      "maxDuration": 120
-    },
-    "analisador-criativos/app/api/feedback/route.ts": {
-      "maxDuration": 30
-    }
-  }
+  "framework": "nextjs"
 }
