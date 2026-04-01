@@ -65,7 +65,7 @@ interface AnalysisResult {
 }
 
 type Step = "idle" | "uploading" | "transcribing" | "analyzing" | "done" | "error";
-type InputMode = "video" | "images";
+type InputMode = "video" | "images" | "url";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -780,6 +780,7 @@ export default function Home() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [instagramUrl, setInstagramUrl] = useState("");
   const [step, setStep] = useState<Step>("idle");
   const [currentStep, setCurrentStep] = useState(0);
   const [transcription, setTranscription] = useState("");
@@ -810,6 +811,8 @@ export default function Home() {
 
   const steps = mode === "video"
     ? ["Enviando vídeo...", "Transcrevendo áudio...", "Analisando criativo..."]
+    : mode === "url"
+    ? ["Baixando vídeo...", "Transcrevendo áudio...", "Analisando criativo..."]
     : ["Enviando imagens...", "Analisando criativo..."];
 
   const analyze = async () => {
@@ -827,6 +830,25 @@ export default function Home() {
 
         setCurrentStep(0);
         const res = await fetch("/api/analyze", { method: "POST", body: fd });
+
+        setCurrentStep(1);
+        await new Promise((r) => setTimeout(r, 300));
+        setCurrentStep(2);
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Erro ao analisar");
+
+        setTranscription(data.transcription || "");
+        setAnalysis(data.analysis);
+      } else if (mode === "url") {
+        if (!instagramUrl.trim()) return;
+
+        setCurrentStep(0);
+        const res = await fetch("/api/analyze-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: instagramUrl.trim() }),
+        });
 
         setCurrentStep(1);
         await new Promise((r) => setTimeout(r, 300));
@@ -869,6 +891,7 @@ export default function Home() {
     setImageFiles([]);
     setVideoPreviewUrl(null);
     setImagePreviewUrls([]);
+    setInstagramUrl("");
     setStep("idle");
     setAnalysis(null);
     setError("");
@@ -879,7 +902,7 @@ export default function Home() {
   };
 
   const isProcessing = step === "uploading" || step === "transcribing" || step === "analyzing";
-  const hasFile = mode === "video" ? !!videoFile : imageFiles.length > 0;
+  const hasFile = mode === "video" ? !!videoFile : mode === "url" ? instagramUrl.trim().length > 0 : imageFiles.length > 0;
 
   return (
     <div style={{ background: "#0a0b0f", minHeight: "100vh" }}>
@@ -960,7 +983,7 @@ export default function Home() {
                 width: "fit-content",
               }}
             >
-              {(["video", "images"] as InputMode[]).map((m) => (
+              {(["video", "images", "url"] as InputMode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => { setMode(m); reset(); }}
@@ -971,14 +994,48 @@ export default function Home() {
                       : { color: "rgba(255,255,255,0.45)" }
                   }
                 >
-                  {m === "video" ? "🎬 Vídeo" : "🖼️ Screenshots"}
+                  {m === "video" ? "🎬 Vídeo" : m === "url" ? "🔗 Link Instagram" : "🖼️ Screenshots"}
                 </button>
               ))}
             </div>
 
-            {/* Drop Zones */}
+            {/* Drop Zones / URL Input */}
             <div className="grid grid-cols-1 gap-4 mb-6">
-              <DropZone mode={mode} onFiles={mode === "video" ? handleVideoFiles : handleImageFiles} disabled={isProcessing} />
+              {mode === "url" ? (
+                <div
+                  className="card p-8 flex flex-col items-center gap-5"
+                  style={{ minHeight: 200, justifyContent: "center" }}
+                >
+                  <div
+                    className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
+                    style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)" }}
+                  >
+                    🔗
+                  </div>
+                  <div className="w-full max-w-lg">
+                    <p className="font-semibold text-white mb-1 text-center">Cole o link do post ou Reel do Instagram</p>
+                    <p className="text-sm text-center mb-4" style={{ color: "rgba(255,255,255,0.4)" }}>
+                      Funciona com posts públicos e Reels
+                    </p>
+                    <input
+                      type="url"
+                      placeholder="https://www.instagram.com/reel/..."
+                      value={instagramUrl}
+                      onChange={(e) => setInstagramUrl(e.target.value)}
+                      disabled={isProcessing}
+                      className="w-full px-4 py-3 rounded-xl text-sm"
+                      style={{
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(99,102,241,0.3)",
+                        color: "#e2e8f0",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <DropZone mode={mode} onFiles={mode === "video" ? handleVideoFiles : handleImageFiles} disabled={isProcessing} />
+              )}
             </div>
 
             {/* Preview */}
@@ -1017,7 +1074,7 @@ export default function Home() {
             )}
 
             {/* Manual transcription (collapsible, video only) */}
-            {mode === "video" && videoFile && (
+            {mode === "video" && videoFile && !isProcessing && (
               <div className="mb-6">
                 <button
                   onClick={() => setShowManual(!showManual)}
@@ -1109,7 +1166,7 @@ export default function Home() {
               <div>
                 <h2 className="text-2xl font-bold text-white">Relatório de Análise</h2>
                 <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  {mode === "video" ? videoFile?.name : `${imageFiles.length} imagem(ns)`}
+                  {mode === "video" ? videoFile?.name : mode === "url" ? instagramUrl : `${imageFiles.length} imagem(ns)`}
                 </p>
               </div>
             </div>
@@ -1118,7 +1175,7 @@ export default function Home() {
             {!feedbackSaved && (
               <FeedbackForm
                 analysis={analysis}
-                videoName={mode === "video" ? (videoFile?.name || "") : `${imageFiles.length} imagem(ns)`}
+                videoName={mode === "video" ? (videoFile?.name || "") : mode === "url" ? instagramUrl : `${imageFiles.length} imagem(ns)`}
                 onSaved={() => setFeedbackSaved(true)}
               />
             )}
