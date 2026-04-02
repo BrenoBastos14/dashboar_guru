@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { unlink, readFile } from "fs/promises";
+import { unlink, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import OpenAI from "openai";
 import { createReadStream, existsSync } from "fs";
@@ -63,18 +63,35 @@ Analise este vídeo/imagens de anúncio e retorne uma análise detalhada no segu
   }
 }`;
 
-async function downloadWithYtDlp(url: string, outputPath: string): Promise<string> {
-  // yt-dlp downloads to a file; we use -o to specify the template
-  // It may pick mp4, webm, etc. We use --merge-output-format mp4 to force mp4
-  const cmd = `yt-dlp --no-playlist --merge-output-format mp4 -o "${outputPath}" "${url}" 2>&1`;
+async function buildCookiesFile(timestamp: number): Promise<string | null> {
+  const sessionId = process.env.INSTAGRAM_SESSIONID;
+  if (!sessionId) return null;
+
+  const cookiesPath = join("/tmp", `ig_cookies_${timestamp}.txt`);
+  // Netscape cookies.txt format
+  const content = [
+    "# Netscape HTTP Cookie File",
+    `.instagram.com\tTRUE\t/\tTRUE\t9999999999\tsessionid\t${sessionId}`,
+  ].join("\n");
+  await writeFile(cookiesPath, content, "utf-8");
+  return cookiesPath;
+}
+
+async function downloadWithYtDlp(url: string, outputPath: string, cookiesPath: string | null): Promise<string> {
+  const cookiesFlag = cookiesPath ? `--cookies "${cookiesPath}"` : "";
+  // --no-playlist: don't download entire profiles
+  // --merge-output-format mp4: ensure mp4 output
+  const cmd = `yt-dlp --no-playlist --merge-output-format mp4 ${cookiesFlag} -o "${outputPath}" "${url}" 2>&1`;
   try {
     await execAsync(cmd, { timeout: 90000 });
-    // yt-dlp writes to the exact path if it can, but sometimes appends extension
     if (existsSync(outputPath)) return outputPath;
     if (existsSync(outputPath + ".mp4")) return outputPath + ".mp4";
     throw new Error("Arquivo de vídeo não encontrado após download");
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("login") || msg.includes("private") || msg.includes("authenticate")) {
+      throw new Error("O Instagram exige autenticação. Configure a variável INSTAGRAM_SESSIONID no Railway.");
+    }
     throw new Error(`Falha ao baixar vídeo: ${msg}`);
   }
 }
@@ -248,8 +265,10 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const videoOutputPath = join("/tmp", `ytdlp_${timestamp}.mp4`);
 
-    // Step 1: Download video with yt-dlp
-    const videoPath = await downloadWithYtDlp(url, videoOutputPath);
+    // Step 1: Build cookies file (if INSTAGRAM_SESSIONID is set) + download
+    const cookiesPath = await buildCookiesFile(timestamp);
+    if (cookiesPath) tmpFiles.push(cookiesPath);
+    const videoPath = await downloadWithYtDlp(url, videoOutputPath, cookiesPath);
     tmpFiles.push(videoPath);
 
     const mimeType = "video/mp4";
