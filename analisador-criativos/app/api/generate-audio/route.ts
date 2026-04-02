@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 
 export const maxDuration = 60;
 
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "kXKq3tAA8q4Qrt52IwrE";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,35 +13,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Texto não fornecido" }, { status: 400 });
     }
 
-    if (!ELEVENLABS_API_KEY) {
-      return NextResponse.json({ error: "ELEVENLABS_API_KEY não configurada" }, { status: 500 });
+    if (!OPENAI_API_KEY) {
+      return NextResponse.json({ error: "OPENAI_API_KEY não configurada" }, { status: 500 });
     }
 
-    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
-      method: "POST",
-      headers: {
-        "xi-api-key": ELEVENLABS_API_KEY,
-        "Content-Type": "application/json",
-        Accept: "audio/mpeg",
-      },
-      body: JSON.stringify({
-        text: text.trim(),
-        model_id: "eleven_multilingual_v2",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.3,
-          use_speaker_boost: true,
-        },
-      }),
+    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+    const mp3 = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: "nova",
+      input: text.trim(),
+      response_format: "mp3",
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Erro no ElevenLabs: ${err}`);
-    }
-
-    const audioBuffer = await res.arrayBuffer();
+    const audioBuffer = await mp3.arrayBuffer();
 
     return new NextResponse(audioBuffer, {
       status: 200,
