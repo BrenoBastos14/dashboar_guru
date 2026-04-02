@@ -772,6 +772,271 @@ function HistoricoPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── Script Generator Panel ──────────────────────────────────────────────────
+
+interface SavedSession {
+  transcription: string;
+  analysis: AnalysisResult;
+  sourceName: string;
+  date: string;
+}
+
+interface GeneratedScript {
+  hook: string;
+  body: string;
+  cta: string;
+  script_completo: string;
+  dicas_gravacao: string[];
+}
+
+function ScriptGeneratorPanel({ onClose }: { onClose: () => void }) {
+  const [session, setSession] = useState<SavedSession | null>(null);
+  const [script, setScript] = useState<GeneratedScript | null>(null);
+  const [editedScript, setEditedScript] = useState("");
+  const [generatingScript, setGeneratingScript] = useState(false);
+  const [generatingAudio, setGeneratingAudio] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("lastAnalysis");
+      if (raw) setSession(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleGenerateScript = async () => {
+    if (!session) return;
+    setGeneratingScript(true);
+    setError("");
+    setScript(null);
+    setAudioUrl(null);
+    try {
+      const res = await fetch("/api/generate-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcription: session.transcription, analysis: session.analysis }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao gerar script");
+      setScript(data.script);
+      setEditedScript(data.script.script_completo || "");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro desconhecido");
+    } finally {
+      setGeneratingScript(false);
+    }
+  };
+
+  const handleGenerateAudio = async () => {
+    const text = editedScript.trim();
+    if (!text) return;
+    setGeneratingAudio(true);
+    setError("");
+    setAudioUrl(null);
+    try {
+      const res = await fetch("/api/generate-audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erro ao gerar áudio");
+      }
+      const blob = await res.blob();
+      setAudioUrl(URL.createObjectURL(blob));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro desconhecido");
+    } finally {
+      setGeneratingAudio(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-10 px-4 pb-10"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", overflowY: "auto" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl card p-6 animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-bold text-white text-lg">Gerador de Script + Narração</h2>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+              Baseado na última análise de criativo
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-sm px-3 py-1.5 rounded-lg"
+            style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {!session ? (
+          <div className="text-center py-10">
+            <p className="text-4xl mb-3">🎙️</p>
+            <p className="font-semibold text-white mb-1">Nenhuma análise encontrada</p>
+            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+              Faça uma análise de criativo primeiro para gerar um novo script.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Last analysis info */}
+            <div
+              className="rounded-xl p-4 mb-5"
+              style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)" }}
+            >
+              <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Última análise</p>
+              <p className="font-semibold text-white text-sm truncate">{session.sourceName}</p>
+              <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
+                {new Date(session.date).toLocaleString("pt-BR")} ·{" "}
+                Nota {parseInt(session.analysis.nota_geral?.score || "0")}/10 ·{" "}
+                {session.analysis.formato?.tipo || ""}
+              </p>
+              {session.transcription && session.transcription !== "[Transcrição não disponível]" && (
+                <p className="text-xs mt-2 italic line-clamp-2" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  &ldquo;{session.transcription.slice(0, 120)}...&rdquo;
+                </p>
+              )}
+            </div>
+
+            {/* Generate script button */}
+            {!script && (
+              <button
+                onClick={handleGenerateScript}
+                disabled={generatingScript}
+                className="w-full py-3 rounded-xl font-bold text-white transition-all mb-4"
+                style={{
+                  background: generatingScript ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                  cursor: generatingScript ? "not-allowed" : "pointer",
+                }}
+              >
+                {generatingScript ? "Gerando script..." : "✨ Gerar Script Melhorado"}
+              </button>
+            )}
+
+            {/* Script result */}
+            {script && (
+              <div className="space-y-4 mb-4">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Hook", value: script.hook, color: "#6366f1" },
+                    { label: "Body", value: script.body, color: "#8b5cf6" },
+                    { label: "CTA", value: script.cta, color: "#a78bfa" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${color}30` }}>
+                      <p className="text-xs font-bold mb-1" style={{ color }}>{label}</p>
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {script.dicas_gravacao?.length > 0 && (
+                  <div className="rounded-xl p-3" style={{ background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.2)" }}>
+                    <p className="text-xs font-bold mb-2" style={{ color: "#eab308" }}>Dicas de Gravação</p>
+                    <ul className="space-y-1">
+                      {script.dicas_gravacao.map((d, i) => (
+                        <li key={i} className="text-xs flex gap-2" style={{ color: "rgba(255,255,255,0.6)" }}>
+                          <span style={{ color: "#eab308" }}>•</span> {d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div>
+                  <p className="section-title mb-2">Script completo para narração</p>
+                  <textarea
+                    value={editedScript}
+                    onChange={(e) => setEditedScript(e.target.value)}
+                    rows={6}
+                    className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#e2e8f0",
+                      lineHeight: 1.6,
+                    }}
+                  />
+                  <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    Você pode editar o texto antes de gerar o áudio.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleGenerateScript}
+                    disabled={generatingScript}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                    style={{
+                      border: "1px solid rgba(99,102,241,0.3)",
+                      color: "#818cf8",
+                      background: "transparent",
+                    }}
+                  >
+                    {generatingScript ? "Gerando..." : "↺ Gerar novo"}
+                  </button>
+                  <button
+                    onClick={handleGenerateAudio}
+                    disabled={generatingAudio || !editedScript.trim()}
+                    className="flex-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+                    style={{
+                      background: generatingAudio ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                      cursor: generatingAudio ? "not-allowed" : "pointer",
+                      flexGrow: 2,
+                    }}
+                  >
+                    {generatingAudio ? "Gerando narração..." : "🎙️ Gerar Narração com ElevenLabs"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Audio player */}
+            {audioUrl && (
+              <div
+                className="rounded-xl p-4 animate-fade-in"
+                style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
+              >
+                <p className="text-sm font-semibold text-white mb-3">🎧 Narração gerada</p>
+                <audio controls src={audioUrl} className="w-full mb-3" />
+                <a
+                  href={audioUrl}
+                  download="narration.mp3"
+                  className="inline-block text-sm px-4 py-2 rounded-lg font-semibold"
+                  style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)" }}
+                >
+                  ⬇ Baixar MP3
+                </a>
+              </div>
+            )}
+
+            {error && (
+              <div
+                className="rounded-xl p-3 mt-3 animate-fade-in"
+                style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}
+              >
+                <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -789,7 +1054,28 @@ export default function Home() {
   const [manualTranscription, setManualTranscription] = useState("");
   const [showManual, setShowManual] = useState(false);
   const [showHistorico, setShowHistorico] = useState(false);
+  const [showScript, setShowScript] = useState(false);
   const [feedbackSaved, setFeedbackSaved] = useState(false);
+
+  // Save last analysis to localStorage for Script Generator
+  useEffect(() => {
+    if (!analysis) return;
+    const sourceName =
+      mode === "video" ? (videoFile?.name || "vídeo") :
+      mode === "url" ? instagramUrl :
+      `${imageFiles.length} imagem(ns)`;
+    try {
+      localStorage.setItem("lastAnalysis", JSON.stringify({
+        transcription,
+        analysis,
+        sourceName,
+        date: new Date().toISOString(),
+      }));
+    } catch {
+      // ignore localStorage errors
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis]);
 
   const handleVideoFiles = (files: File[]) => {
     const f = files[0];
@@ -899,6 +1185,7 @@ export default function Home() {
     setManualTranscription("");
     setShowManual(false);
     setFeedbackSaved(false);
+    setShowScript(false);
   };
 
   const isProcessing = step === "uploading" || step === "transcribing" || step === "analyzing";
@@ -947,17 +1234,27 @@ export default function Home() {
               Nova análise
             </button>
           )}
-          <button
-            onClick={() => setShowHistorico(true)}
-            className="text-sm px-4 py-1.5 rounded-lg flex items-center gap-1.5"
-            style={{ border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8" }}
-          >
-            📊 Histórico
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowScript(true)}
+              className="text-sm px-4 py-1.5 rounded-lg flex items-center gap-1.5"
+              style={{ border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa" }}
+            >
+              🎙️ Gerar Script
+            </button>
+            <button
+              onClick={() => setShowHistorico(true)}
+              className="text-sm px-4 py-1.5 rounded-lg flex items-center gap-1.5"
+              style={{ border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8" }}
+            >
+              📊 Histórico
+            </button>
+          </div>
         </div>
       </header>
 
       {showHistorico && <HistoricoPanel onClose={() => setShowHistorico(false)} />}
+      {showScript && <ScriptGeneratorPanel onClose={() => setShowScript(false)} />}
 
       <main className="max-w-5xl mx-auto px-6 py-10">
         {/* Upload Screen */}
