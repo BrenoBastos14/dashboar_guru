@@ -59,3 +59,45 @@ class ActiveCampaignClient:
         """Return a single automation by ID."""
         data = self._get(f"automations/{automation_id}")
         return data.get("automation", {})
+
+    # ------------------------------------------------------------------
+    # Tags
+    # ------------------------------------------------------------------
+
+    def _post(self, endpoint: str, payload: dict) -> dict:
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        response = requests.post(url, headers=self.headers, json=payload, timeout=15)
+        response.raise_for_status()
+        return response.json()
+
+    def list_tags(self) -> list[dict[str, Any]]:
+        """Return all tags."""
+        tags: list[dict] = []
+        offset = 0
+        limit = 100
+        while True:
+            data = self._get("tags", params={"limit": limit, "offset": offset})
+            batch = data.get("tags", [])
+            tags.extend(batch)
+            meta = data.get("meta", {})
+            total = int(meta.get("total", len(tags)))
+            offset += limit
+            if offset >= total or not batch:
+                break
+        return tags
+
+    def create_tag(self, name: str, tag_type: str = "contact", description: str = "") -> dict[str, Any]:
+        """Create a tag and return the created tag object."""
+        payload = {"tag": {"tag": name, "tagType": tag_type, "description": description}}
+        data = self._post("tags", payload)
+        return data.get("tag", {})
+
+    # ------------------------------------------------------------------
+    # Automations
+    # ------------------------------------------------------------------
+
+    def create_automation(self, name: str, status: int = 1) -> dict[str, Any]:
+        """Create an automation shell (name + status). Returns created automation."""
+        payload = {"automation": {"name": name, "status": str(status)}}
+        data = self._post("automations", payload)
+        return data.get("automation", {})
