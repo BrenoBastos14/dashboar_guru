@@ -27,12 +27,16 @@ class ActiveCampaignClient:
     def test_connection(self) -> tuple[bool, str]:
         """Returns (success, message)."""
         try:
-            data = self._get("accounts")
-            return True, "Conexão estabelecida com sucesso!"
+            data = self._get("users/me")
+            name = data.get("user", {}).get("firstName", "")
+            msg = f"Conectado com sucesso!" + (f" Olá, {name}!" if name else "")
+            return True, msg
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response else "?"
             if status == 401:
                 return False, "API Key inválida ou sem permissão."
+            if status == 403:
+                return False, "Acesso negado. Verifique se a API Key tem as permissões necessárias."
             return False, f"Erro HTTP {status}: {e}"
         except requests.exceptions.ConnectionError:
             return False, "Não foi possível conectar. Verifique a URL da conta."
