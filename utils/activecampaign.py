@@ -120,5 +120,11 @@ class ActiveCampaignClient:
     def create_automation(self, name: str, status: int = 1) -> dict[str, Any]:
         """Create an automation shell (name + status). Returns created automation."""
         payload = {"automation": {"name": name, "status": str(status)}}
-        data = self._post("automations", payload)
+        try:
+            data = self._post("automations", payload)
+        except requests.exceptions.HTTPError as e:
+            status_code = e.response.status_code if e.response else 0
+            if status_code == 405:
+                raise RuntimeError("PLAN_LIMIT_405") from e
+            raise
         return data.get("automation", {})

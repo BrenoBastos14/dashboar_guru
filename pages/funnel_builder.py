@@ -503,12 +503,22 @@ with tab_publish:
                 progress.progress(done / total_ops, text=f"Criando tag: {tag_name}")
 
             # Create automations
+            plan_limit_hit = False
             for auto_name in automations_to_create:
-                try:
-                    created = client.create_automation(name=auto_name, status=0)
-                    log.append({"tipo": "Automação", "nome": auto_name, "status": "✅ Criada (inativa)", "id": created.get("id", "")})
-                except Exception as e:  # noqa: BLE001
-                    log.append({"tipo": "Automação", "nome": auto_name, "status": f"❌ Erro: {e}", "id": ""})
+                if plan_limit_hit:
+                    log.append({"tipo": "Automação", "nome": auto_name, "status": "⚠️ Plano não suporta criação via API", "id": ""})
+                else:
+                    try:
+                        created = client.create_automation(name=auto_name, status=0)
+                        log.append({"tipo": "Automação", "nome": auto_name, "status": "✅ Criada (inativa)", "id": created.get("id", "")})
+                    except RuntimeError as e:
+                        if "PLAN_LIMIT_405" in str(e):
+                            plan_limit_hit = True
+                            log.append({"tipo": "Automação", "nome": auto_name, "status": "⚠️ Plano não suporta criação via API", "id": ""})
+                        else:
+                            log.append({"tipo": "Automação", "nome": auto_name, "status": f"❌ Erro: {e}", "id": ""})
+                    except Exception as e:  # noqa: BLE001
+                        log.append({"tipo": "Automação", "nome": auto_name, "status": f"❌ Erro: {e}", "id": ""})
                 done += 1
                 progress.progress(done / total_ops, text=f"Criando automação: {auto_name}")
 
@@ -518,9 +528,19 @@ with tab_publish:
 
     # Show publish log
     if st.session_state.fb_publish_log:
-        st.success("Publicação concluída!")
         import pandas as pd
         log_df = pd.DataFrame(st.session_state.fb_publish_log)
+        has_plan_limit = log_df["status"].str.contains("Plano não suporta").any()
+        has_tags_ok = log_df[log_df["tipo"] == "Tag"]["status"].str.contains("✅|⚠️").any() if "Tag" in log_df["tipo"].values else False
+
+        if has_plan_limit:
+            st.warning(
+                "**Criação de automações não disponível via API** para este plano do ActiveCampaign. "
+                "As tags foram criadas normalmente. Crie as automações manualmente no AC usando o "
+                "guia abaixo e aplique as tags de bridge geradas."
+            )
+        else:
+            st.success("Publicação concluída!")
         st.dataframe(log_df, use_container_width=True, hide_index=True)
 
     st.markdown("---")
