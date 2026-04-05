@@ -106,12 +106,23 @@ with st.sidebar:
                 st.session_state.ac_client = None
 
     if st.session_state.ac_connected:
-        st.success(f"Conectado")
+        st.success("Conectado")
         if st.button("Desconectar", use_container_width=True):
             st.session_state.ac_connected = False
             st.session_state.ac_client = None
             st.session_state.ac_automations = []
             st.rerun()
+
+        st.markdown("---")
+        st.markdown("**Diagnóstico**")
+        if st.button("🔍 Testar endpoints", use_container_width=True):
+            with st.spinner("Testando..."):
+                results = st.session_state.ac_client.diagnose()
+            for ep, info in results.items():
+                icon = "✅" if info["ok"] else "❌"
+                st.markdown(f"{icon} `{ep}` → **{info['status']}**")
+                if not info["ok"] and info.get("erro"):
+                    st.caption(info["erro"])
 
     st.markdown("---")
     st.caption("Central de Automações v1.0")
