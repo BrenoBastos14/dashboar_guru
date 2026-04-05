@@ -25,23 +25,30 @@ class ActiveCampaignClient:
         return response.json()
 
     def test_connection(self) -> tuple[bool, str]:
-        """Returns (success, message)."""
-        try:
-            data = self._get("users/me")
-            name = data.get("user", {}).get("firstName", "")
-            msg = f"Conectado com sucesso!" + (f" Olá, {name}!" if name else "")
-            return True, msg
-        except requests.exceptions.HTTPError as e:
-            status = e.response.status_code if e.response else "?"
-            if status == 401:
-                return False, "API Key inválida ou sem permissão."
-            if status == 403:
-                return False, "Acesso negado. Verifique se a API Key tem as permissões necessárias."
-            return False, f"Erro HTTP {status}: {e}"
-        except requests.exceptions.ConnectionError:
-            return False, "Não foi possível conectar. Verifique a URL da conta."
-        except Exception as e:  # noqa: BLE001
-            return False, f"Erro inesperado: {e}"
+        """Returns (success, message). Tries multiple endpoints for broad plan compatibility."""
+        # Try endpoints from most to least restrictive
+        for endpoint in ("users/me", "tags?limit=1", "lists?limit=1"):
+            try:
+                data = self._get(endpoint)
+                if endpoint == "users/me":
+                    name = data.get("user", {}).get("firstName", "")
+                    suffix = f" Olá, {name}!" if name else ""
+                else:
+                    suffix = ""
+                return True, f"Conectado com sucesso!{suffix}"
+            except requests.exceptions.HTTPError as e:
+                status = e.response.status_code if e.response else 0
+                if status == 401:
+                    return False, "API Key inválida. Verifique a chave e tente novamente."
+                if status == 403:
+                    return False, "Acesso negado (403). Verifique as permissões da API Key."
+                # 404/405 → try next endpoint
+                continue
+            except requests.exceptions.ConnectionError:
+                return False, "Não foi possível conectar. Verifique a URL da conta (ex: https://suaconta.api-us1.com)."
+            except Exception as e:  # noqa: BLE001
+                return False, f"Erro inesperado: {e}"
+        return False, "Não foi possível verificar a conexão. Verifique a URL e a API Key."
 
     def list_automations(self) -> list[dict[str, Any]]:
         """Return all automations, handling pagination."""
@@ -49,7 +56,17 @@ class ActiveCampaignClient:
         offset = 0
         limit = 100
         while True:
-            data = self._get("automations", params={"limit": limit, "offset": offset})
+            try:
+                data = self._get("automations", params={"limit": limit, "offset": offset})
+            except requests.exceptions.HTTPError as e:
+                status = e.response.status_code if e.response else 0
+                if status == 405:
+                    raise RuntimeError(
+                        "A API de Automações retornou 405. Isso pode indicar que o plano da sua conta "
+                        "não inclui acesso à API de Automações, ou a URL da conta está incorreta. "
+                        "Verifique se a URL é do tipo: https://suaconta.api-us1.com"
+                    ) from e
+                raise
             batch = data.get("automations", [])
             automations.extend(batch)
             meta = data.get("meta", {})
