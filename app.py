@@ -249,7 +249,7 @@ if (
     if use_count_st:
         pivot_st = pivot_st.astype(int)
     vmax_st = float(pivot_st.values.max()) if pivot_st.values.max() > 0 else 1.0
-    styled_st = pivot_st.style.applymap(lambda v: _cell_style(v, vmax_st))
+    styled_st = pivot_st.style.map(lambda v: _cell_style(v, vmax_st))
     if use_count_st:
         styled_st = styled_st.format("{:d}")
     else:
@@ -357,7 +357,7 @@ if campos_pivot:
         if use_count:
             pivot = pivot.astype(int)
         vmax = float(pivot.values.max()) if pivot.values.max() > 0 else 1.0
-        styled = pivot.style.applymap(lambda v: _cell_style(v, vmax))
+        styled = pivot.style.map(lambda v: _cell_style(v, vmax))
         if use_count:
             styled = styled.format("{:d}")
         else:
