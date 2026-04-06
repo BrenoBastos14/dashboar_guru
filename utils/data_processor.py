@@ -33,9 +33,16 @@ STATUS_APROVADO = {"aprovado", "aprovada", "completa", "completo", "pago", "paga
 
 def load_csv(file) -> pd.DataFrame:
     """
-    Lê um arquivo CSV do Guru Manager com detecção automática de encoding e separador.
+    Lê CSV ou XLSX do Guru Manager.
     Aceita file-like objects (UploadedFile do Streamlit) ou caminhos de arquivo.
     """
+    name = getattr(file, "name", "") or ""
+
+    if name.lower().endswith(".xlsx"):
+        df = pd.read_excel(file, dtype=str, engine="openpyxl")
+        df.columns = df.columns.str.strip()
+        return df
+
     raw = file.read() if hasattr(file, "read") else open(file, "rb").read()
 
     # Tenta encodings comuns

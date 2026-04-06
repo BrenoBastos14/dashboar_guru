@@ -62,9 +62,9 @@ with st.sidebar:
     st.divider()
 
     uploaded_file = st.file_uploader(
-        "Carregar CSV",
-        type=["csv"],
-        help="Exporte o relatório de vendas no Guru Manager e faça upload aqui.",
+        "Carregar CSV ou Excel",
+        type=["csv", "xlsx"],
+        help="Exporte o relatório de vendas no Guru Manager e faça upload aqui (.csv ou .xlsx).",
     )
 
     st.divider()
