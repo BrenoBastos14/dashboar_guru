@@ -479,6 +479,20 @@ with tab_fb:
         st.dataframe(df_fb.head(5), use_container_width=True)
 
     # -----------------------------------------------------------------------
+    # Filtro de período — Facebook Ads
+    # -----------------------------------------------------------------------
+    if "data" in df_fb.columns and df_fb["data"].notna().any():
+        fb_min = df_fb["data"].min().date()
+        fb_max = df_fb["data"].max().date()
+        fb_col1, fb_col2 = st.columns(2)
+        fb_start = fb_col1.date_input("De (FB)", value=fb_min, min_value=fb_min, max_value=fb_max, key="fb_start")
+        fb_end   = fb_col2.date_input("Até (FB)", value=fb_max, min_value=fb_min, max_value=fb_max, key="fb_end")
+        df_fb = df_fb[
+            (df_fb["data"].dt.date >= fb_start) &
+            (df_fb["data"].dt.date <= fb_end)
+        ]
+
+    # -----------------------------------------------------------------------
     # KPIs Facebook
     # -----------------------------------------------------------------------
     total_gasto = df_fb["gasto"].sum() if "gasto" in df_fb.columns else 0.0
