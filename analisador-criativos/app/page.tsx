@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, DragEvent, ChangeEvent } from "react";
+import React, { useState, useRef, useCallback, useEffect, DragEvent, ChangeEvent } from "react";
 
 interface FeedbackEntry {
   id: string;
@@ -18,48 +18,71 @@ interface FeedbackEntry {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+interface ScoreEntry { nota: number; label: string; obs: string; }
+
 interface AnalysisResult {
-  hook_visual?: {
-    descricao?: string;
-    elementos?: string[];
-    avaliacao?: string;
+  scorecard?: {
+    nota_geral?: number;
+    classificacao?: string;
+    notas?: {
+      hook?: ScoreEntry; qualificacao?: ScoreEntry; invalidacao?: ScoreEntry;
+      mup?: ScoreEntry; medo?: ScoreEntry; expert?: ScoreEntry;
+      msol?: ScoreEntry; provas?: ScoreEntry; cta?: ScoreEntry;
+      escassez?: ScoreEntry; linguagem?: ScoreEntry; visual?: ScoreEntry;
+    };
+  };
+  variaveis?: {
+    publico_alvo?: string;
+    expert?: { identificado?: boolean; nome?: string; camadas?: number; descricao?: string };
+    mup?: { identificado?: boolean; descricao?: string; qualidade?: string };
+    muf?: { identificado?: boolean; descricao?: string; qualidade?: string };
+    mus?: { identificado?: boolean; nome?: string; tem_nome_proprietario?: boolean; tem_tempo_curto?: boolean; tem_simplicidade?: boolean; descricao?: string };
+    promessa?: { camadas_usadas?: string[]; tipo?: string; descricao?: string };
+  };
+  analise_hook?: {
+    angulo_identificado?: string;
+    beneficio_tipo?: string;
+    beneficio_camada?: string;
+    forca?: string;
+    texto_do_hook?: string;
     justificativa?: string;
   };
-  formato?: {
-    tipo?: string;
-    descricao?: string;
+  estrutura?: {
+    blocos_presentes?: { bloco: string; qualidade: string; trecho: string }[];
+    blocos_ausentes?: string[];
+    formato_usado?: string;
+    invalidacoes?: { quantidade?: number; solucoes_invalidadas?: string[]; tem_reason_why_cientifico?: boolean };
+    provas?: { tipos_encontrados?: string[]; quantidade?: number; qualidade?: string };
+    ctas?: { quantidade?: number; distribuicao?: string; destino?: string };
   };
-  presenca_humana?: {
-    tem_rosto?: boolean;
-    tipo?: string;
-    descricao?: string;
+  bullets?: {
+    encontrados?: { tipo: string; texto: string; qualidade: string }[];
+    tem_nomeacao_proprietaria?: boolean;
+    tem_especificidade?: boolean;
+    tem_parenteses_consequencia?: boolean;
+    qualidade_geral?: string;
   };
-  texto_em_tela?: {
-    tem_texto?: boolean;
-    tipos?: string[];
-    descricao?: string;
+  visual?: {
+    formato?: string;
+    hook_visual_descricao?: string;
+    presenca_humana?: string;
+    tipo_presenca?: string;
+    texto_em_tela?: boolean;
+    tipos_texto?: string[];
+    ritmo_edicao?: string;
+    cta_visual?: string;
   };
-  cores_dominantes?: {
-    cores?: string[];
-    estilo_visual?: string;
+  diagnostico?: {
+    pontos_fortes?: string[];
+    pontos_fracos?: string[];
+    top3_melhorias?: { prioridade: number; acao: string; justificativa: string; impacto: string; framework: string }[];
   };
-  edicao?: {
-    ritmo?: string;
-    transicoes?: string;
-    cortes_por_minuto_estimado?: string;
-    descricao?: string;
-  };
-  cta_visual?: {
-    tem_cta?: boolean;
-    tipo?: string;
-    descricao?: string;
-  };
-  pontos_fortes?: string[];
-  pontos_fracos?: string[];
-  sugestoes?: string[];
-  nota_geral?: {
-    score?: string;
-    justificativa?: string;
+  gerador?: {
+    hooks_alternativos?: { angulo: string; hook: string; beneficio_camada: string }[];
+    bullets_sugeridos?: { tipo: string; bullet: string; posicao_ideal: string }[];
+    mup_alternativo?: string;
+    msol_alternativo?: string;
+    future_pacing_sugerido?: string;
   };
   raw?: string;
 }
@@ -75,14 +98,6 @@ function getScoreColor(score: number) {
   return "#ef4444";
 }
 
-function getAvaliacaoBadge(avaliacao?: string) {
-  if (!avaliacao) return "badge-default";
-  const a = avaliacao.toLowerCase();
-  if (a === "forte") return "badge-forte";
-  if (a === "médio" || a === "medio") return "badge-medio";
-  if (a === "fraco") return "badge-fraco";
-  return "badge-default";
-}
 
 function StepIcon({ state }: { state: "active" | "done" | "pending" }) {
   if (state === "done") {
@@ -98,19 +113,6 @@ function StepIcon({ state }: { state: "active" | "done" | "pending" }) {
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
       <circle cx="9" cy="9" r="8" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
     </svg>
-  );
-}
-
-function ListItems({ items, color }: { items: string[]; color: string }) {
-  return (
-    <div>
-      {items.map((item, i) => (
-        <div key={i} className="list-item">
-          <div className="list-bullet" style={{ background: color }} />
-          <span>{item}</span>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -189,49 +191,79 @@ function DropZone({
 
 // ─── Results ─────────────────────────────────────────────────────────────────
 
-function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; transcription?: string }) {
-  const score = parseInt(analysis.nota_geral?.score || "0") || 0;
-  const scoreColor = getScoreColor(score);
-
-  const exportReport = () => {
-    const lines: string[] = [
-      "=== RELATÓRIO DE ANÁLISE DE CRIATIVO — ALPHA MEDIA ===",
-      "",
-      `NOTA GERAL: ${score}/10`,
-      analysis.nota_geral?.justificativa || "",
-      "",
-    ];
-    if (transcription) {
-      lines.push("TRANSCRIÇÃO:", transcription, "");
-    }
-    lines.push(
-      `HOOK VISUAL: ${analysis.hook_visual?.avaliacao || ""}`,
-      analysis.hook_visual?.descricao || "",
-      "",
-      `FORMATO: ${analysis.formato?.tipo || ""}`,
-      analysis.formato?.descricao || "",
-      "",
-      `PRESENÇA HUMANA: ${analysis.presenca_humana?.tem_rosto ? "Sim" : "Não"} — ${analysis.presenca_humana?.tipo || ""}`,
-      "",
-      "PONTOS FORTES:",
-      ...(analysis.pontos_fortes || []).map((p) => `• ${p}`),
-      "",
-      "PONTOS FRACOS:",
-      ...(analysis.pontos_fracos || []).map((p) => `• ${p}`),
-      "",
-      "SUGESTÕES:",
-      ...(analysis.sugestoes || []).map((p) => `• ${p}`),
-    );
-    navigator.clipboard.writeText(lines.join("\n")).then(() => {
-      alert("Relatório copiado para a área de transferência!");
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     });
   };
+  return (
+    <button
+      onClick={copy}
+      className="text-xs px-2.5 py-1 rounded-lg flex-shrink-0"
+      style={{ background: copied ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)", color: copied ? "#22c55e" : "rgba(255,255,255,0.5)", border: `1px solid ${copied ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)"}` }}
+    >
+      {copied ? "✓ Copiado" : "Copiar"}
+    </button>
+  );
+}
+
+function CollapsibleSection({ title, emoji, children, defaultOpen = false }: { title: string; emoji: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="card overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between px-5 py-4"
+        onClick={() => setOpen(!open)}
+      >
+        <div className="flex items-center gap-2">
+          <span>{emoji}</span>
+          <span className="font-semibold text-white text-sm">{title}</span>
+        </div>
+        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div className="px-5 pb-5">{children}</div>}
+    </div>
+  );
+}
+
+function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; transcription?: string }) {
+  // Compute nota_geral client-side as fallback for weighted average
+  const notas = analysis.scorecard?.notas;
+  const computedScore = notas
+    ? (() => {
+        const h = notas.hook?.nota ?? 0;
+        const mup = notas.mup?.nota ?? 0;
+        const msol = notas.msol?.nota ?? 0;
+        const provas = notas.provas?.nota ?? 0;
+        const rest = [notas.qualificacao, notas.invalidacao, notas.medo, notas.expert, notas.cta, notas.escassez, notas.linguagem, notas.visual]
+          .reduce((s, e) => s + (e?.nota ?? 0), 0);
+        const total = h * 2 + mup * 1.5 + msol * 1.5 + provas * 1.2 + rest;
+        const weights = 2 + 1.5 + 1.5 + 1.2 + 8;
+        return Math.round((total / weights) * 10) / 10;
+      })()
+    : 0;
+  const score = analysis.scorecard?.nota_geral ?? computedScore;
+  const scoreColor = getScoreColor(score);
+  const classificacao = analysis.scorecard?.classificacao || "";
+
+  const scoreRows = notas
+    ? [
+        notas.hook, notas.qualificacao, notas.invalidacao, notas.mup,
+        notas.medo, notas.expert, notas.msol, notas.provas,
+        notas.cta, notas.escassez, notas.linguagem, notas.visual,
+      ].filter(Boolean) as ScoreEntry[]
+    : [];
 
   return (
-    <div className="animate-fade-in space-y-6">
-      {/* Score */}
+    <div className="animate-fade-in space-y-4">
+
+      {/* ── SCORECARD ── */}
       <div className="card p-6">
-        <div className="flex items-center justify-between mb-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
           <div>
             <p className="section-title mb-1">Nota Geral</p>
             <div className="flex items-end gap-2">
@@ -239,246 +271,382 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
               <span className="text-xl mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>/10</span>
             </div>
           </div>
-          <div
-            className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold"
-            style={{
-              background: `conic-gradient(${scoreColor} ${score * 36}deg, rgba(255,255,255,0.06) 0deg)`,
-              boxShadow: `0 0 30px ${scoreColor}30`,
-            }}
-          >
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold"
-              style={{ background: "#0a0b0f", color: scoreColor }}
-            >
-              {score}
-            </div>
-          </div>
-        </div>
-        <div className="score-bar-track mb-3">
-          <div
-            className="score-bar-fill"
-            style={{ width: `${score * 10}%`, background: scoreColor }}
-          />
-        </div>
-        {analysis.nota_geral?.justificativa && (
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
-            {analysis.nota_geral.justificativa}
-          </p>
-        )}
-      </div>
-
-      {/* Transcription */}
-      {transcription && transcription !== "[Transcrição não disponível]" && (
-        <div className="card p-6">
-          <p className="section-title mb-3">Transcrição do Áudio</p>
-          <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>
-            {transcription}
-          </p>
-        </div>
-      )}
-
-      {/* Hook Visual */}
-      {analysis.hook_visual && (
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="section-title">Hook Visual (primeiros 3s)</p>
-            {analysis.hook_visual.avaliacao && (
-              <span className={`badge ${getAvaliacaoBadge(analysis.hook_visual.avaliacao)}`}>
-                {analysis.hook_visual.avaliacao}
-              </span>
-            )}
-          </div>
-          {analysis.hook_visual.descricao && (
-            <p className="text-sm mb-3" style={{ color: "rgba(255,255,255,0.75)" }}>
-              {analysis.hook_visual.descricao}
-            </p>
-          )}
-          {analysis.hook_visual.elementos && analysis.hook_visual.elementos.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {analysis.hook_visual.elementos.map((el, i) => (
-                <span key={i} className="badge badge-default">{el}</span>
-              ))}
-            </div>
-          )}
-          {analysis.hook_visual.justificativa && (
-            <p className="text-xs italic" style={{ color: "rgba(255,255,255,0.4)" }}>
-              {analysis.hook_visual.justificativa}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Formato + Presença Humana */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {analysis.formato && (
-          <div className="card p-6">
-            <p className="section-title mb-3">Formato</p>
-            {analysis.formato.tipo && (
-              <span className="badge badge-default mb-2">{analysis.formato.tipo}</span>
-            )}
-            {analysis.formato.descricao && (
-              <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.65)" }}>
-                {analysis.formato.descricao}
-              </p>
-            )}
-          </div>
-        )}
-        {analysis.presenca_humana && (
-          <div className="card p-6">
-            <p className="section-title mb-3">Presença Humana</p>
-            <div className="flex items-center gap-2 mb-2">
+          <div className="text-right">
+            {classificacao && (
               <span
-                className="w-2 h-2 rounded-full"
-                style={{ background: analysis.presenca_humana.tem_rosto ? "#22c55e" : "#ef4444" }}
-              />
-              <span className="text-sm font-semibold">
-                {analysis.presenca_humana.tem_rosto ? "Tem rosto" : "Sem rosto"}
+                className="inline-block px-3 py-1 rounded-full text-sm font-bold mb-1"
+                style={{ background: `${scoreColor}20`, color: scoreColor, border: `1px solid ${scoreColor}40` }}
+              >
+                {classificacao}
               </span>
+            )}
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-lg"
+              style={{
+                background: `conic-gradient(${scoreColor} ${score * 36}deg, rgba(255,255,255,0.06) 0deg)`,
+                boxShadow: `0 0 24px ${scoreColor}30`,
+              }}
+            >
+              <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "#0a0b0f", color: scoreColor }}>
+                {score}
+              </div>
             </div>
-            {analysis.presenca_humana.tipo && (
-              <span className="badge badge-default mb-2">{analysis.presenca_humana.tipo}</span>
-            )}
-            {analysis.presenca_humana.descricao && (
-              <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.65)" }}>
-                {analysis.presenca_humana.descricao}
-              </p>
-            )}
+          </div>
+        </div>
+
+        {/* Score bars */}
+        {scoreRows.length > 0 && (
+          <div className="space-y-2 mb-5">
+            {scoreRows.map((row, i) => {
+              const c = getScoreColor(row.nota);
+              return (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-xs w-32 flex-shrink-0" style={{ color: "rgba(255,255,255,0.55)" }}>{row.label}</span>
+                  <div className="flex-1 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${row.nota * 10}%`, background: c }} />
+                  </div>
+                  <span className="text-xs font-mono w-6 text-right" style={{ color: c }}>{row.nota}</span>
+                  <span className="text-xs flex-1 hidden md:block truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{row.obs}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Top 3 melhorias */}
+        {analysis.diagnostico?.top3_melhorias && analysis.diagnostico.top3_melhorias.length > 0 && (
+          <div>
+            <p className="section-title mb-2">Top 3 Melhorias Prioritárias</p>
+            <div className="space-y-2">
+              {analysis.diagnostico.top3_melhorias.map((m, i) => (
+                <div key={i} className="flex gap-3 items-start rounded-lg p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span
+                    className="text-xs font-bold px-2 py-0.5 rounded flex-shrink-0 mt-0.5"
+                    style={{ background: m.impacto === "Alto" ? "rgba(239,68,68,0.15)" : "rgba(234,179,8,0.15)", color: m.impacto === "Alto" ? "#ef4444" : "#eab308" }}
+                  >
+                    {m.impacto}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{m.acao}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>{m.justificativa}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Texto em Tela */}
-      {analysis.texto_em_tela && (
-        <div className="card p-6">
-          <p className="section-title mb-3">Texto em Tela</p>
-          {analysis.texto_em_tela.tipos && analysis.texto_em_tela.tipos.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {analysis.texto_em_tela.tipos.map((t, i) => (
-                <span key={i} className="badge badge-default">{t}</span>
-              ))}
-            </div>
-          )}
-          {analysis.texto_em_tela.descricao && (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
-              {analysis.texto_em_tela.descricao}
-            </p>
-          )}
-        </div>
+      {/* ── TRANSCRIÇÃO ── */}
+      {transcription && transcription !== "[Transcrição não disponível]" && (
+        <CollapsibleSection title="Transcrição do Áudio" emoji="🎙️" defaultOpen={false}>
+          <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>{transcription}</p>
+        </CollapsibleSection>
       )}
 
-      {/* Cores + Edição */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {analysis.cores_dominantes && (
-          <div className="card p-6">
-            <p className="section-title mb-3">Cores Dominantes</p>
-            {analysis.cores_dominantes.cores && analysis.cores_dominantes.cores.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {analysis.cores_dominantes.cores.map((c, i) => (
-                  <span key={i} className="badge badge-default">{c}</span>
+      {/* ── VARIÁVEIS ── */}
+      {analysis.variaveis && (
+        <CollapsibleSection title="Variáveis Identificadas" emoji="🔬" defaultOpen={false}>
+          <div className="space-y-3">
+            {[
+              { label: "Público-alvo", value: analysis.variaveis.publico_alvo, icon: "👤" },
+              { label: "Expert", value: analysis.variaveis.expert?.descricao ? `${analysis.variaveis.expert.nome || ""} — ${analysis.variaveis.expert.camadas || 0} camadas — ${analysis.variaveis.expert.descricao}` : null, icon: "🏅", quality: analysis.variaveis.expert?.identificado ? "Forte" : "Ausente" },
+              { label: "MUP", value: analysis.variaveis.mup?.descricao, icon: "🧬", quality: analysis.variaveis.mup?.qualidade },
+              { label: "MUF", value: analysis.variaveis.muf?.descricao, icon: "⚙️", quality: analysis.variaveis.muf?.qualidade },
+              { label: "MSOL", value: analysis.variaveis.mus?.descricao ? `"${analysis.variaveis.mus.nome || ""}" — ${analysis.variaveis.mus.descricao}` : null, icon: "✨", quality: analysis.variaveis.mus?.identificado ? "Forte" : "Ausente" },
+              { label: "Promessa", value: analysis.variaveis.promessa?.descricao, icon: "🎯", quality: analysis.variaveis.promessa?.tipo },
+            ].map(({ label, value, icon, quality }) => (
+              <div key={label} className="flex gap-3 items-start">
+                <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.5)" }}>{label}</span>
+                    {quality && (
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: (quality === "Forte" || quality === "Explícita") ? "rgba(34,197,94,0.1)" : quality === "Ausente" ? "rgba(239,68,68,0.1)" : "rgba(234,179,8,0.1)", color: (quality === "Forte" || quality === "Explícita") ? "#22c55e" : quality === "Ausente" ? "#ef4444" : "#eab308" }}>
+                        {quality}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm" style={{ color: value ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)" }}>
+                    {value || "Não identificado"}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {analysis.variaveis.promessa?.camadas_usadas && analysis.variaveis.promessa.camadas_usadas.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {analysis.variaveis.promessa.camadas_usadas.map((c, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(99,102,241,0.1)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.2)" }}>{c}</span>
                 ))}
               </div>
             )}
-            {analysis.cores_dominantes.estilo_visual && (
-              <p className="text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
-                {analysis.cores_dominantes.estilo_visual}
-              </p>
-            )}
           </div>
-        )}
-        {analysis.edicao && (
-          <div className="card p-6">
-            <p className="section-title mb-3">Edição</p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {analysis.edicao.ritmo && (
-                <span className="badge badge-default">{analysis.edicao.ritmo}</span>
-              )}
-              {analysis.edicao.cortes_por_minuto_estimado && (
-                <span className="badge badge-default font-mono">
-                  ~{analysis.edicao.cortes_por_minuto_estimado} cortes/min
-                </span>
-              )}
-            </div>
-            {analysis.edicao.transicoes && (
-              <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.45)" }}>
-                Transições: {analysis.edicao.transicoes}
-              </p>
-            )}
-            {analysis.edicao.descricao && (
-              <p className="text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
-                {analysis.edicao.descricao}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+        </CollapsibleSection>
+      )}
 
-      {/* CTA Visual */}
-      {analysis.cta_visual && (
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="section-title">CTA Visual</p>
-            <span
-              className="badge"
-              style={{
-                background: analysis.cta_visual.tem_cta ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
-                color: analysis.cta_visual.tem_cta ? "#22c55e" : "#ef4444",
-                border: `1px solid ${analysis.cta_visual.tem_cta ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
-              }}
-            >
-              {analysis.cta_visual.tem_cta ? "Tem CTA" : "Sem CTA"}
-            </span>
+      {/* ── ANÁLISE DO HOOK ── */}
+      {analysis.analise_hook && (
+        <CollapsibleSection title="Análise do Hook" emoji="🪝" defaultOpen={true}>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Ângulo", value: analysis.analise_hook.angulo_identificado },
+                { label: "Força", value: analysis.analise_hook.forca },
+                { label: "Benefício", value: analysis.analise_hook.beneficio_tipo },
+                { label: "Camada", value: analysis.analise_hook.beneficio_camada },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-lg p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+                  <p className="text-sm font-semibold text-white">{value || "—"}</p>
+                </div>
+              ))}
+            </div>
+            {analysis.analise_hook.texto_do_hook && (
+              <div className="rounded-lg p-3" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}>
+                <p className="text-xs mb-1" style={{ color: "#818cf8" }}>Texto do Hook</p>
+                <p className="text-sm italic" style={{ color: "rgba(255,255,255,0.8)" }}>&ldquo;{analysis.analise_hook.texto_do_hook}&rdquo;</p>
+              </div>
+            )}
+            {analysis.analise_hook.justificativa && (
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>{analysis.analise_hook.justificativa}</p>
+            )}
           </div>
-          {analysis.cta_visual.tipo && (
-            <span className="badge badge-default mb-2">{analysis.cta_visual.tipo}</span>
+        </CollapsibleSection>
+      )}
+
+      {/* ── ESTRUTURA 12 BLOCOS ── */}
+      {analysis.estrutura && (
+        <CollapsibleSection title="Estrutura — 12 Blocos" emoji="🏗️" defaultOpen={false}>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Formato: </span>
+              <span className="text-xs" style={{ color: "#818cf8" }}>{analysis.estrutura.formato_usado}</span>
+            </div>
+            {analysis.estrutura.blocos_presentes && analysis.estrutura.blocos_presentes.length > 0 && (
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: "#22c55e" }}>Blocos Presentes ({analysis.estrutura.blocos_presentes.length})</p>
+                <div className="space-y-1.5">
+                  {analysis.estrutura.blocos_presentes.map((b, i) => (
+                    <div key={i} className="flex gap-2 items-start rounded-lg p-2.5" style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.12)" }}>
+                      <span className="text-xs font-bold flex-shrink-0" style={{ color: getScoreColor(b.qualidade === "Forte" ? 9 : b.qualidade === "Médio" ? 6 : 3) }}>{b.qualidade}</span>
+                      <div>
+                        <p className="text-xs font-semibold text-white">{b.bloco}</p>
+                        {b.trecho && <p className="text-xs mt-0.5 italic" style={{ color: "rgba(255,255,255,0.4)" }}>&ldquo;{b.trecho}&rdquo;</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {analysis.estrutura.blocos_ausentes && analysis.estrutura.blocos_ausentes.length > 0 && (
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: "#ef4444" }}>Blocos Ausentes ({analysis.estrutura.blocos_ausentes.length})</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {analysis.estrutura.blocos_ausentes.map((b, i) => (
+                    <span key={i} className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>{b}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              <div className="rounded-lg p-3 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-2xl font-bold text-white">{analysis.estrutura.invalidacoes?.quantidade ?? 0}</p>
+                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Invalidações</p>
+              </div>
+              <div className="rounded-lg p-3 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-2xl font-bold text-white">{analysis.estrutura.provas?.quantidade ?? 0}</p>
+                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Provas</p>
+              </div>
+              <div className="rounded-lg p-3 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-2xl font-bold text-white">{analysis.estrutura.ctas?.quantidade ?? 0}</p>
+                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>CTAs</p>
+              </div>
+            </div>
+            {analysis.estrutura.provas?.tipos_encontrados && analysis.estrutura.provas.tipos_encontrados.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.estrutura.provas.tipos_encontrados.map((t, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(99,102,241,0.1)", color: "#a78bfa" }}>{t}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* ── BULLETS ── */}
+      {analysis.bullets && (
+        <CollapsibleSection title="Bullets Identificados" emoji="💎" defaultOpen={false}>
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2 mb-2">
+              {[
+                { label: "Nomeação proprietária", ok: analysis.bullets.tem_nomeacao_proprietaria },
+                { label: "Especificidade", ok: analysis.bullets.tem_especificidade },
+                { label: "Parênteses de consequência", ok: analysis.bullets.tem_parenteses_consequencia },
+              ].map(({ label, ok }) => (
+                <span key={label} className="text-xs px-2 py-0.5 rounded-full" style={{ background: ok ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.08)", color: ok ? "#22c55e" : "#ef4444", border: `1px solid ${ok ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.15)"}` }}>
+                  {ok ? "✓" : "✕"} {label}
+                </span>
+              ))}
+            </div>
+            {analysis.bullets.encontrados && analysis.bullets.encontrados.map((b, i) => (
+              <div key={i} className="rounded-lg p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold" style={{ color: "#818cf8" }}>{b.tipo}</span>
+                  <span className="text-xs" style={{ color: getScoreColor(b.qualidade === "Forte" ? 9 : b.qualidade === "Médio" ? 6 : 3) }}>{b.qualidade}</span>
+                </div>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>{b.texto}</p>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* ── VISUAL ── */}
+      {analysis.visual && (
+        <CollapsibleSection title="Análise Visual" emoji="🎬" defaultOpen={false}>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Formato", value: analysis.visual.formato },
+              { label: "Presença Humana", value: analysis.visual.tipo_presenca || analysis.visual.presenca_humana },
+              { label: "Ritmo de Edição", value: analysis.visual.ritmo_edicao },
+              { label: "CTA Visual", value: analysis.visual.cta_visual },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-lg p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+                <p className="text-sm font-semibold text-white">{value || "—"}</p>
+              </div>
+            ))}
+            {analysis.visual.tipos_texto && analysis.visual.tipos_texto.length > 0 && (
+              <div className="col-span-2 flex flex-wrap gap-1.5">
+                {analysis.visual.tipos_texto.map((t, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(99,102,241,0.1)", color: "#818cf8" }}>{t}</span>
+                ))}
+              </div>
+            )}
+            {analysis.visual.hook_visual_descricao && (
+              <div className="col-span-2">
+                <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Hook visual (primeiros 3s)</p>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>{analysis.visual.hook_visual_descricao}</p>
+              </div>
+            )}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* ── PONTOS FORTES / FRACOS ── */}
+      {analysis.diagnostico && (
+        <CollapsibleSection title="Pontos Fortes & Fracos" emoji="⚖️" defaultOpen={true}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: "#22c55e" }}>Pontos Fortes</p>
+              <div className="space-y-1.5">
+                {(analysis.diagnostico.pontos_fortes || []).map((p, i) => (
+                  <div key={i} className="flex gap-2 items-start">
+                    <span style={{ color: "#22c55e", flexShrink: 0, marginTop: 1 }}>•</span>
+                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>{p}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: "#ef4444" }}>Pontos Fracos</p>
+              <div className="space-y-1.5">
+                {(analysis.diagnostico.pontos_fracos || []).map((p, i) => (
+                  <div key={i} className="flex gap-2 items-start">
+                    <span style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }}>•</span>
+                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>{p}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* ── GERADOR ── */}
+      {analysis.gerador && (
+        <div className="space-y-4">
+          {/* Hooks alternativos */}
+          {analysis.gerador.hooks_alternativos && analysis.gerador.hooks_alternativos.filter(h => h.hook).length > 0 && (
+            <div className="card p-5">
+              <p className="section-title mb-1">🎯 5 Hooks Alternativos</p>
+              <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.35)" }}>Gerados com ângulos diferentes do hook original</p>
+              <div className="space-y-3">
+                {analysis.gerador.hooks_alternativos.filter(h => h.hook).map((h, i) => (
+                  <div key={i} className="rounded-xl p-4" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)" }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8" }}>{h.angulo}</span>
+                        {h.beneficio_camada && <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{h.beneficio_camada}</span>}
+                      </div>
+                      <CopyButton text={h.hook} />
+                    </div>
+                    <p className="text-sm font-semibold" style={{ color: "#e2e8f0", lineHeight: 1.5 }}>{h.hook}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-          {analysis.cta_visual.descricao && (
-            <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.65)" }}>
-              {analysis.cta_visual.descricao}
-            </p>
+
+          {/* Bullets sugeridos */}
+          {analysis.gerador.bullets_sugeridos && analysis.gerador.bullets_sugeridos.filter(b => b.bullet).length > 0 && (
+            <div className="card p-5">
+              <p className="section-title mb-1">💎 5 Bullets Sugeridos</p>
+              <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.35)" }}>Refinados com especificidade + curiosidade + benefício</p>
+              <div className="space-y-3">
+                {analysis.gerador.bullets_sugeridos.filter(b => b.bullet).map((b, i) => (
+                  <div key={i} className="rounded-xl p-4" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa" }}>{b.tipo}</span>
+                        {b.posicao_ideal && <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{b.posicao_ideal}</span>}
+                      </div>
+                      <CopyButton text={b.bullet} />
+                    </div>
+                    <p className="text-sm font-semibold" style={{ color: "#e2e8f0", lineHeight: 1.5 }}>{b.bullet}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Extras */}
+          {(analysis.gerador.mup_alternativo || analysis.gerador.msol_alternativo || analysis.gerador.future_pacing_sugerido) && (
+            <div className="card p-5">
+              <p className="section-title mb-4">🔧 Sugestões Extras</p>
+              <div className="space-y-3">
+                {analysis.gerador.mup_alternativo && (
+                  <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold" style={{ color: "#eab308" }}>MUP Alternativo</span>
+                      <CopyButton text={analysis.gerador.mup_alternativo} />
+                    </div>
+                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>{analysis.gerador.mup_alternativo}</p>
+                  </div>
+                )}
+                {analysis.gerador.msol_alternativo && (
+                  <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold" style={{ color: "#22c55e" }}>MSOL Alternativo</span>
+                      <CopyButton text={analysis.gerador.msol_alternativo} />
+                    </div>
+                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>{analysis.gerador.msol_alternativo}</p>
+                  </div>
+                )}
+                {analysis.gerador.future_pacing_sugerido && (
+                  <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold" style={{ color: "#818cf8" }}>Future Pacing</span>
+                      <CopyButton text={analysis.gerador.future_pacing_sugerido} />
+                    </div>
+                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>{analysis.gerador.future_pacing_sugerido}</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
-
-      {/* Pontos Fortes / Fracos / Sugestões */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {analysis.pontos_fortes && analysis.pontos_fortes.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-base">✅</span>
-              <p className="section-title">Pontos Fortes</p>
-            </div>
-            <ListItems items={analysis.pontos_fortes} color="#22c55e" />
-          </div>
-        )}
-        {analysis.pontos_fracos && analysis.pontos_fracos.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-base">⚠️</span>
-              <p className="section-title">Pontos Fracos</p>
-            </div>
-            <ListItems items={analysis.pontos_fracos} color="#eab308" />
-          </div>
-        )}
-        {analysis.sugestoes && analysis.sugestoes.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-base">💡</span>
-              <p className="section-title">Sugestões</p>
-            </div>
-            <ListItems items={analysis.sugestoes} color="#818cf8" />
-          </div>
-        )}
-      </div>
-
-      {/* Export */}
-      <div className="flex justify-center pt-2 pb-4">
-        <button
-          onClick={exportReport}
-          className="px-6 py-3 rounded-xl font-semibold text-white gradient-bg flex items-center gap-2 hover:opacity-90 transition-opacity"
-        >
-          <span>📋</span> Copiar Relatório Completo
-        </button>
-      </div>
     </div>
   );
 }
@@ -510,10 +678,10 @@ function FeedbackForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           videoName,
-          notaGemini: parseInt(analysis.nota_geral?.score || "0") || 0,
-          formato: analysis.formato?.tipo || "",
-          hookAvaliacao: analysis.hook_visual?.avaliacao || "",
-          ctaAvaliacao: analysis.cta_visual?.tipo || "",
+          notaGemini: analysis.scorecard?.nota_geral ?? 0,
+          formato: analysis.visual?.formato || "",
+          hookAvaliacao: analysis.analise_hook?.forca || "",
+          ctaAvaliacao: analysis.visual?.cta_visual || "",
           resultado,
           gasto,
           roas,

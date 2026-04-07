@@ -6,6 +6,7 @@ import { createReadStream, existsSync } from "fs";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { FeedbackEntry } from "../feedback/route";
+import { buildDRPrompt, parseDRAnalysis } from "../../../lib/dr-prompt";
 
 export const maxDuration = 120;
 
@@ -14,54 +15,6 @@ const execAsync = promisify(exec);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 
-const ANALYSIS_PROMPT = `Você é um especialista em análise de criativos de anúncios digitais para direct response marketing no Brasil.
-
-Analise este vídeo/imagens de anúncio e retorne uma análise detalhada no seguinte formato JSON (responda APENAS o JSON puro, sem markdown, sem backticks, sem texto antes ou depois):
-
-{
-  "hook_visual": {
-    "descricao": "Descreva o que acontece nos primeiros 3 segundos do vídeo",
-    "elementos": ["lista dos elementos visuais usados no hook"],
-    "avaliacao": "Forte/Médio/Fraco",
-    "justificativa": "Por que essa avaliação"
-  },
-  "formato": {
-    "tipo": "VSL / UGC / Talking Head / B-Roll / Motion Graphics / Misto",
-    "descricao": "Descrição do formato geral do vídeo"
-  },
-  "presenca_humana": {
-    "tem_rosto": true,
-    "tipo": "Talking head / Pessoa em ação / Sem pessoa / Depoimento / etc",
-    "descricao": "Detalhes sobre presença humana"
-  },
-  "texto_em_tela": {
-    "tem_texto": true,
-    "tipos": ["headline", "legenda", "bullet points", "CTA"],
-    "descricao": "Como o texto é usado no vídeo, quais textos aparecem"
-  },
-  "cores_dominantes": {
-    "cores": ["lista de cores predominantes"],
-    "estilo_visual": "Descrição do estilo visual e paleta de cores"
-  },
-  "edicao": {
-    "ritmo": "Rápido / Moderado / Lento",
-    "transicoes": "Tipos de transições usadas",
-    "cortes_por_minuto_estimado": "número estimado",
-    "descricao": "Padrão geral de edição"
-  },
-  "cta_visual": {
-    "tem_cta": true,
-    "tipo": "Botão / Texto / Seta / Animação / etc",
-    "descricao": "Como o CTA é apresentado visualmente"
-  },
-  "pontos_fortes": ["lista dos 3-5 pontos fortes do criativo"],
-  "pontos_fracos": ["lista dos 2-4 pontos fracos ou oportunidades de melhoria"],
-  "sugestoes": ["lista de 3-5 sugestões práticas para melhorar o criativo"],
-  "nota_geral": {
-    "score": "7",
-    "justificativa": "Justificativa breve da nota"
-  }
-}`;
 
 async function buildCookiesFile(timestamp: number): Promise<string | null> {
   const sessionId = process.env.INSTAGRAM_SESSIONID;
@@ -202,9 +155,9 @@ async function loadFeedbackHistory(): Promise<FeedbackEntry[]> {
   }
 }
 
-async function analyzeWithGemini(fileUri: string, mimeType: string, history: FeedbackEntry[]): Promise<string> {
+async function analyzeWithGemini(fileUri: string, mimeType: string, transcription: string, history: FeedbackEntry[]): Promise<string> {
   const historyContext = buildHistoryContext(history);
-  const prompt = ANALYSIS_PROMPT + historyContext;
+  const prompt = buildDRPrompt(transcription, historyContext);
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
@@ -220,7 +173,7 @@ async function analyzeWithGemini(fileUri: string, mimeType: string, history: Fee
             ],
           },
         ],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
+        generationConfig: { temperature: 0.4, maxOutputTokens: 6000 },
       }),
     }
   );
@@ -294,19 +247,12 @@ export async function POST(request: NextRequest) {
 
     // Step 5: Load history + Analyze with Gemini
     const history = await loadFeedbackHistory();
-    const analysisText = await analyzeWithGemini(fileUri, mimeType, history);
+    const analysisText = await analyzeWithGemini(fileUri, mimeType, transcription, history);
 
     // Parse JSON from response
     let analysis: Record<string, unknown>;
     try {
-      const cleaned = analysisText
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      analysis = JSON.parse(cleaned.slice(start, end + 1));
+      analysis = parseDRAnalysis(analysisText);
     } catch {
       analysis = { raw: analysisText };
     }
