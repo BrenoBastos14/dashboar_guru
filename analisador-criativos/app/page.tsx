@@ -1069,8 +1069,8 @@ function ScriptGeneratorPanel({ onClose }: { onClose: () => void }) {
               <p className="font-semibold text-white text-sm truncate">{session.sourceName}</p>
               <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
                 {new Date(session.date).toLocaleString("pt-BR")} ·{" "}
-                Nota {parseInt(session.analysis.nota_geral?.score || "0")}/10 ·{" "}
-                {session.analysis.formato?.tipo || ""}
+                Nota {session.analysis.scorecard?.nota_geral ?? 0}/10 ·{" "}
+                {session.analysis.visual?.formato || session.analysis.scorecard?.classificacao || ""}
               </p>
               {session.transcription && session.transcription !== "[Transcrição não disponível]" && (
                 <p className="text-xs mt-2 italic line-clamp-2" style={{ color: "rgba(255,255,255,0.45)" }}>
