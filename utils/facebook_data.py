@@ -6,12 +6,29 @@ import numpy as np
 
 FB_COLUMN_ALIASES = {
     "campanha": ["Nome da campanha", "Campaign name", "Campanha"],
-    "conjunto": ["Nome do conjunto de anúncios", "Nome do conjunto", "Ad set name", "Conjunto"],
+    "conjunto": [
+        "Nome do conjunto de anúncios", "Nome do conjunto", "Conjunto de anúncios",
+        "Ad set name", "Conjunto",
+    ],
     "anuncio": ["Nome do anúncio", "Ad name", "Anúncio", "Anuncio"],
-    "hora_do_dia": ["Hora do dia", "Hour of day", "Hora"],
-    "gasto": ["Valor usado (BRL)", "Valor usado (BR)", "Valor usado", "Amount spent (BRL)", "Amount spent", "Spend"],
-    "data_inicio": ["Início dos relatórios", "Inicio dos relatorios", "Report start", "Start date", "Data"],
-    "data_fim": ["Término dos relatórios", "Termino dos relatorios", "Report end", "End date"],
+    "hora_do_dia": [
+        "Hora do dia", "Hora do Dia", "Hora", "Hour of day",
+        "Período (hora do dia)", "Periodo (hora do dia)",
+        "Breakdown: Hour of day", "Hour",
+    ],
+    "gasto": [
+        "Valor usado (BRL)", "Valor usado (BR)", "Valor usado",
+        "Amount spent (BRL)", "Amount spent", "Spend",
+        "Custo", "Cost",
+    ],
+    "data_inicio": [
+        "Início dos relatórios", "Inicio dos relatorios", "Início", "Inicio",
+        "Report start", "Start date", "Data",
+    ],
+    "data_fim": [
+        "Término dos relatórios", "Termino dos relatorios", "Término", "Termino",
+        "Report end", "End date",
+    ],
 }
 
 
@@ -60,20 +77,31 @@ def _parse_brl_number(series: pd.Series) -> pd.Series:
 def _parse_hora_do_dia(series: pd.Series) -> pd.Series:
     """
     Parse 'Hora do dia' column to integer hour (0-23).
-    Handles formats like:
-      - '09:00:00 - 09:59'  → 9
-      - '9'                 → 9
-      - '09:00'             → 9
+    Handles formats exported by Meta Ads Manager:
+      - '09:00:00 - 09:59'   → 9
+      - '9:00 - 9:59'        → 9
+      - '0 - 1'              → 0
+      - '9'                  → 9
+      - 9 (int/float)        → 9
     """
     def _extract(val):
         if pd.isna(val):
             return np.nan
+        # Already numeric
+        if isinstance(val, (int, float)):
+            return int(val)
         s = str(val).strip()
-        # Format: "HH:MM:SS - HH:MM" or "HH:MM:SS - HH:MM:SS"
-        m = re.match(r"^(\d{1,2}):", s)
+        if not s or s.lower() in ("nan", "none", ""):
+            return np.nan
+        # "HH:MM:SS - ..." or "HH:MM - ..."  →  take leading digits before ':'
+        m = re.match(r"^(\d{1,2})\s*:", s)
         if m:
             return int(m.group(1))
-        # Plain integer
+        # "0 - 1"  or  "9 - 10"  →  take first number
+        m = re.match(r"^(\d{1,2})\s*[-–]", s)
+        if m:
+            return int(m.group(1))
+        # Plain integer string
         try:
             return int(float(s))
         except (ValueError, TypeError):

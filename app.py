@@ -469,6 +469,13 @@ with tab_fb:
     with st.expander("🔍 Diagnóstico — colunas detectadas (Facebook Ads)", expanded=False):
         st.write(f"**Linhas carregadas:** {len(df_fb):,}")
         st.write(f"**Colunas detectadas:** {list(df_fb.columns)}")
+        hora_ok = "hora" in df_fb.columns and df_fb["hora"].notna().any()
+        st.write(f"**`hora` detectada:** {'Sim ✅' if hora_ok else 'Não ❌ — coluna Hora do dia não encontrada no arquivo'}")
+        if hora_ok:
+            st.write(f"**Amostra de horas:** {df_fb['hora'].dropna().unique()[:10].tolist()}")
+        st.write(f"**`gasto` detectado:** {'Sim ✅' if 'gasto' in df_fb.columns else 'Não ❌'}")
+        if "gasto" in df_fb.columns:
+            st.write(f"**Amostra de gastos:** {df_fb['gasto'].head(5).tolist()}")
         st.dataframe(df_fb.head(5), use_container_width=True)
 
     # -----------------------------------------------------------------------
@@ -514,39 +521,53 @@ with tab_fb:
         }
         group_cols = nivel_map[nivel]
 
-        tbl = aggregate_fb_metrics(df_merged, group_cols)
-
-        if tbl.empty:
-            st.warning("Nenhum dado para exibir com o agrupamento selecionado.")
+        # Se "Hora do Dia" selecionado mas hora não foi detectada no arquivo, avisa
+        hora_disponivel = "hora" in df_fb.columns and df_fb["hora"].notna().any()
+        if nivel == "Hora do Dia" and not hora_disponivel:
+            st.warning(
+                "**Coluna de hora não encontrada no arquivo do Facebook Ads.**\n\n"
+                "Para ver métricas por hora, exporte o relatório com a quebra **'Hora do dia'** "
+                "ativada no Gerenciador de Anúncios.\n\n"
+                "Abra o diagnóstico acima para ver quais colunas foram detectadas."
+            )
         else:
-            label_map = {
-                "campanha": "Campanha",
-                "conjunto": "Conjunto",
-                "anuncio": "Anúncio",
-                "hora": "Hora do Dia",
-                "gasto": "Gasto (R$)",
-                "vendas": "Vendas",
-                "receita": "Receita (R$)",
-                "roas": "ROAS",
-                "cpa": "CPA (R$)",
-            }
-            tbl_display = tbl.copy()
+            tbl = aggregate_fb_metrics(df_merged, group_cols)
 
-            # Format monetary columns
-            for col in ("gasto", "receita", "cpa"):
-                if col in tbl_display.columns:
-                    tbl_display[col] = tbl_display[col].apply(_brl)
+            # Para "Hora do Dia", ordenar por hora (0-23) em vez de gasto
+            if nivel == "Hora do Dia" and "hora" in tbl.columns:
+                tbl = tbl.sort_values("hora").reset_index(drop=True)
 
-            if "roas" in tbl_display.columns:
-                tbl_display["roas"] = tbl_display["roas"].apply(lambda v: f"{v:.2f}x")
+            if tbl.empty:
+                st.warning("Nenhum dado para exibir com o agrupamento selecionado.")
+            else:
+                label_map = {
+                    "campanha": "Campanha",
+                    "conjunto": "Conjunto",
+                    "anuncio": "Anúncio",
+                    "hora": "Hora do Dia",
+                    "gasto": "Gasto (R$)",
+                    "vendas": "Vendas",
+                    "receita": "Receita (R$)",
+                    "roas": "ROAS",
+                    "cpa": "CPA (R$)",
+                }
+                tbl_display = tbl.copy()
 
-            if "hora" in tbl_display.columns:
-                tbl_display["hora"] = tbl_display["hora"].apply(
-                    lambda v: f"{int(v):02d}:00 – {int(v):02d}:59" if pd.notna(v) else "—"
-                )
+                # Format monetary columns
+                for col in ("gasto", "receita", "cpa"):
+                    if col in tbl_display.columns:
+                        tbl_display[col] = tbl_display[col].apply(_brl)
 
-            tbl_display = tbl_display.rename(columns=label_map)
-            st.dataframe(tbl_display, use_container_width=True, hide_index=True)
+                if "roas" in tbl_display.columns:
+                    tbl_display["roas"] = tbl_display["roas"].apply(lambda v: f"{v:.2f}x")
+
+                if "hora" in tbl_display.columns:
+                    tbl_display["hora"] = tbl_display["hora"].apply(
+                        lambda v: f"{int(v):02d}:00 – {int(v):02d}:59" if pd.notna(v) else "—"
+                    )
+
+                tbl_display = tbl_display.rename(columns=label_map)
+                st.dataframe(tbl_display, use_container_width=True, hide_index=True)
 
         st.divider()
 
