@@ -25,16 +25,36 @@ def _find_fb_column(df: pd.DataFrame, key: str):
 
 
 def _parse_brl_number(series: pd.Series) -> pd.Series:
-    """Convert Brazilian number format (1.234,56) to float."""
-    return (
-        series.astype(str)
-        .str.replace(r"R\$\s*", "", regex=True)
-        .str.replace(r"\.", "", regex=True)
-        .str.replace(",", ".", regex=False)
-        .str.strip()
-        .pipe(pd.to_numeric, errors="coerce")
-        .fillna(0.0)
-    )
+    """
+    Convert monetary values to float.
+    Handles:
+      - Brazilian format: "1.234,56" → 1234.56
+      - International/XLSX float: "27.21" or 27.21 → 27.21
+      - Already numeric values from XLSX
+    """
+    def _convert(val):
+        if pd.isna(val):
+            return 0.0
+        # Already a number (from XLSX)
+        if isinstance(val, (int, float)):
+            return float(val)
+        s = str(val).strip()
+        # Remove currency symbol
+        s = re.sub(r"R\$\s*", "", s)
+        s = s.strip()
+        if not s:
+            return 0.0
+        # Detect format: if has comma → Brazilian format
+        # "1.234,56" or "27,21" → Brazilian (comma = decimal)
+        if "," in s:
+            s = s.replace(".", "").replace(",", ".")
+        # else: "27.21" or "1234.56" → already correct international format
+        try:
+            return float(s)
+        except (ValueError, TypeError):
+            return 0.0
+
+    return series.apply(_convert)
 
 
 def _parse_hora_do_dia(series: pd.Series) -> pd.Series:
