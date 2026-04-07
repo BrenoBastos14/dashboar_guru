@@ -33,89 +33,49 @@ FRAMEWORK 2 — 5 VARIÁVEIS OBRIGATÓRIAS
 3. MUP (Mecanismo Único do Problema): Causa raiz desconhecida pelo público. Nunca óbvia. Sempre descoberta científica, processo biológico, elemento oculto.
 4. MUF (Mecanismo Único de Funcionamento): Como a solução age por dentro — o mecanismo de ação que conecta MUP ao MUS.
 5. MUS/MSOL (Mecanismo Único da Solução): Ritual/truque/método com nome proprietário, tempo absurdamente curto, simplicidade extrema.
-6. Promessa: Benefício central desdobrado em 4 camadas:
-   - Desejo (o que quer sentir/ter)
-   - Funcional (consequência prática)
-   - Dimensional (funcional levado ao extremo emocional)
-   - Emocional (estado interno buscado)
-   Decidir se é benefício Explícito (falado) ou Implícito (percebido).
+6. Promessa: Benefício central desdobrado em 4 camadas: Desejo / Funcional / Dimensional / Emocional.
 
 ═══════════════════════════════════════
 FRAMEWORK 3 — 21 ÂNGULOS DE HOOK
 ═══════════════════════════════════════
 
-Fórmula: Ângulo + Benefício = Hook
-
-1. Contrarian — Quebra senso comum. "Se você deseja emagrecer, pare de fazer cardio..."
-2. Ideia Paradoxal — Pega dúvida real. "Como atrizes de Hollywood perdem peso tão rápido (E VOCÊ NÃO)"
-3. Pop Quiz — Quiz múltipla escolha + resposta surpreendente que quebra crença.
-4. Curiosidade — Reenquadra algo familiar como novo, revelando risco/funcionalidade oculta do cotidiano.
-5. Conspiração — "Nós contra eles". Indústria/sistema escondendo informação.
-6. Teaser do Mecanismo — Teasing do MUS + benefício forte.
-7. Truque — Facilidade + mistério como solução.
-8. Receita Estranha — Ingrediente incomum + veículo simples + resultado surpreendente.
-9. Nova Descoberta — Superestrutura (universidade/instituto) + esperança nova.
-10. História de Horror — Punch emocional (frase curta visceral) + storytelling.
-11. Problema-Solução — Problema cru + solução direta.
-12. Fofoca/Polêmica — Celebridade/pessoa pública + revelação bombástica.
-13. Perrengue Cobiçado — Resultado tão bom que vira "problema".
-14. Big Mistake — O grande erro que X% comete.
-15. Pergunta Samurai — Pergunta direta com resposta inesperada = teasing do MUS.
-16. Antes & Depois — Transformação visual/concreta com prova.
-17. Tips & Tricks — Lista de dicas que afunila para a principal.
-18. Prova Social Massiva — Número grande + grupo específico + resultado + método simples.
-19. "Eu Tava Fodida Igual Você" — Expert/apresentador com transformação pessoal.
-20. Aviso Urgente — Alerta de perigo iminente.
-21. Quick & Fast — Velocidade + simplicidade extrema como diferencial.
+1. Contrarian 2. Ideia Paradoxal 3. Pop Quiz 4. Curiosidade 5. Conspiração
+6. Teaser do Mecanismo 7. Truque 8. Receita Estranha 9. Nova Descoberta 10. História de Horror
+11. Problema-Solução 12. Fofoca/Polêmica 13. Perrengue Cobiçado 14. Big Mistake 15. Pergunta Samurai
+16. Antes & Depois 17. Tips & Tricks 18. Prova Social Massiva 19. Eu Tava Fodida Igual Você
+20. Aviso Urgente 21. Quick & Fast
 
 ═══════════════════════════════════════
 FRAMEWORK 4 — 21 TIPOS DE BULLET
 ═══════════════════════════════════════
 
-Cada bullet forte tem 3 camadas: Especificidade + Curiosidade + Benefício implícito.
-Todo mecanismo/efeito DEVE ter nome proprietário entre aspas.
-
-1. "Como" — "Como [ação contraintuitiva] pode [resultado]"
-2. "O Segredo" — "A razão secreta pela qual [grupo] nunca [problema]"
-3. "Por Quê" — "Por que [grupo] NUNCA deve [ação comum]"
-4. "O Que" — "O que [elite] faz que o resto não faz"
-5. "O Que Nunca / O Pior" — "O que NUNCA [fazer] em [situação]"
-6. "E Ainda / E Mais" — "[Bullet forte] + Além disso, [2º benefício]"
-7. "Número / Lista" — "[X] [maneiras/sinais] de [benefício]"
-8. "Certo? Errado!" — "[Crença comum], certo? ERRADO!"
-9. "Cuidado / Aviso" — "ATENÇÃO: [perigo] — [como se proteger]"
-10. "Você É/Tem/Já?" — "Você [faz/tem X]? Então [benefício]"
-11. "Nomeação Própria" — "O [nome proprietário] que [resultado]"
-12. "Disfarçado / Escondido" — "[Segredos] que [grupo] nunca conta"
-13. "Declaração + Benefício" — "[Fato curioso]. [Como gera benefício]"
-14. "Benefício Direto" — "[VERBO DE AÇÃO + benefício]. [Prova]"
-15. "Pergunta Específica" — "Você sabia que [dado]? Veja como [solução]"
-16. "Se... Então" — "Se você [condição], então [benefício]"
-17. "Quando" — "Quando [momento surpreendente] é a hora de [ação]"
-18. "Mais Rápido / Mais Fácil" — "A maneira mais rápida de [resultado]"
-19. "A Verdade" — "A VERDADE SOBRE [assunto]. [O que realmente acontece]"
-20. "Melhor" — "MELHOR QUE [referência]. [Prova]"
-21. "Único(a)" — "A única [coisa] que [benefício exclusivo]"
+Cada bullet forte: Especificidade + Curiosidade + Benefício implícito. Mecanismos com nome proprietário.
+1. Como 2. O Segredo 3. Por Quê 4. O Que 5. O Que Nunca
+6. E Ainda 7. Número/Lista 8. Certo? Errado! 9. Cuidado/Aviso 10. Você É/Tem/Já?
+11. Nomeação Própria 12. Disfarçado/Escondido 13. Declaração+Benefício 14. Benefício Direto 15. Pergunta Específica
+16. Se...Então 17. Quando 18. Mais Rápido/Fácil 19. A Verdade 20. Melhor 21. Único(a)
 
 ═══════════════════════════════════════
 FRAMEWORK 5 — CHECKLIST DE QUALIDADE
 ═══════════════════════════════════════
 
-- Hook usa fórmula Ângulo + Benefício?
-- Ad é individualista (fala com UMA sub-persona)?
-- 5 variáveis definidas e consistentes?
-- Pelo menos 2 ciclos de invalidação?
-- MUP apresentado como descoberta desconhecida?
-- MSOL tem nome próprio, tempo curto, funciona para qualquer um?
-- Expert tem 3 camadas de credibilidade?
-- Provas empilhadas (mín. 3 tipos)?
-- 3+ CTAs distribuídos?
-- CTA é para assistir (não comprar)?
-- Future Pacing antes do CTA final?
-- Inimigo Comum + Escassez no fechamento?
-- Bullets com especificidade + curiosidade + benefício?
-- Nomeação proprietária nos mecanismos?
-- Linguagem visceral, sensorial, espelha o prospect?`;
+Hook usa Ângulo+Benefício? Ad individualista? 5 variáveis definidas? 2+ invalidações? MUP como descoberta?
+MSOL com nome próprio? Expert 3 camadas? 3+ tipos de prova? 3+ CTAs? CTA para assistir?
+Future Pacing? Inimigo+Escassez? Bullets com especificidade+curiosidade? Nomeação proprietária? Linguagem visceral?
+
+═══════════════════════════════════════
+CAPACIDADES ADICIONAIS
+═══════════════════════════════════════
+
+Além de analisar, você é capaz de:
+
+1. MINERAR TEASINGS: Extrair fragmentos curiosos de MUP/MUF/MUS e criar nomes chiclete proprietários.
+2. DETECTAR SUB-PERSONAS: Identificar a persona do ad e sugerir 3 alternativas com adaptações de hook e medo.
+3. AVALIAR INVALIDAÇÃO: Julgar se tem reason why científico (conectado ao MUP) ou só opinião. Sugerir invalidações mais fortes.
+4. AVALIAR LINGUAGEM VISCERAL: Classificar como Genérica/Coloquial/Visceral. Reescrever trechos genéricos. Listar verbos fracos e sugerir fortes.
+5. TEMATIZAR BULLETS POR ESFERA: Gerar bullets por contexto de vida (social, íntima, profissional, digital, pessoal).
+
+Toda geração de texto deve ser em português brasileiro, tom coloquial de direct response, linguagem VISCERAL e sensorial.`;
 
 export const DR_ANALYSIS_PROMPT = `Analise este anúncio de Direct Response usando todos os frameworks da sua base de conhecimento.
 
@@ -148,6 +108,20 @@ RETORNE APENAS um JSON válido. Sem markdown, sem backticks, sem texto antes ou 
     "mus": { "identificado": true, "nome": "", "tem_nome_proprietario": true, "tem_tempo_curto": true, "tem_simplicidade": true, "descricao": "" },
     "promessa": { "camadas_usadas": ["Desejo","Funcional","Dimensional","Emocional"], "tipo": "Explícita|Implícita", "descricao": "" }
   },
+  "sub_personas": {
+    "atual": { "descricao": "", "medo_dominante": "", "desejo_dominante": "", "objecao_principal": "" },
+    "alternativas": [
+      { "descricao": "", "medo_dominante": "", "desejo_dominante": "", "objecao_principal": "", "como_adaptaria_hook": "", "como_adaptaria_medo": "" },
+      { "descricao": "", "medo_dominante": "", "desejo_dominante": "", "objecao_principal": "", "como_adaptaria_hook": "", "como_adaptaria_medo": "" },
+      { "descricao": "", "medo_dominante": "", "desejo_dominante": "", "objecao_principal": "", "como_adaptaria_hook": "", "como_adaptaria_medo": "" }
+    ]
+  },
+  "teasings": {
+    "mup_teasings": ["teasing 1", "teasing 2", "teasing 3"],
+    "muf_teasings": ["teasing 1", "teasing 2", "teasing 3"],
+    "mus_teasings": ["teasing 1", "teasing 2", "teasing 3"],
+    "nomes_chiclete": ["nome 1", "nome 2", "nome 3"]
+  },
   "analise_hook": {
     "angulo_identificado": "Nome do ângulo dos 21",
     "beneficio_tipo": "Explícito|Implícito",
@@ -160,7 +134,16 @@ RETORNE APENAS um JSON válido. Sem markdown, sem backticks, sem texto antes ou 
     "blocos_presentes": [{"bloco": "nome", "qualidade": "Forte|Médio|Fraco", "trecho": "exemplo do texto"}],
     "blocos_ausentes": ["lista dos blocos que faltam"],
     "formato_usado": "Completo (12 blocos)|Comprimido (ads curtos)|Incompleto",
-    "invalidacoes": { "quantidade": 0, "solucoes_invalidadas": [], "tem_reason_why_cientifico": true },
+    "invalidacoes": {
+      "quantidade": 0,
+      "ciclos": [
+        { "solucoes_invalidadas": [], "tem_reason_why": true, "reason_why_tipo": "Científico|Lógico|Opinião|Ausente", "conectada_ao_mup": true, "qualidade": "Forte|Médio|Fraco", "trecho": "" }
+      ],
+      "invalidacoes_sugeridas": [
+        { "solucao_a_invalidar": "", "reason_why": "", "texto_sugerido": "" },
+        { "solucao_a_invalidar": "", "reason_why": "", "texto_sugerido": "" }
+      ]
+    },
     "provas": { "tipos_encontrados": [], "quantidade": 0, "qualidade": "Forte|Médio|Fraco" },
     "ctas": { "quantidade": 0, "distribuicao": "Bem distribuídos|Concentrados|Único", "destino": "Assistir VSL|Comprar|Outro" }
   },
@@ -170,6 +153,17 @@ RETORNE APENAS um JSON válido. Sem markdown, sem backticks, sem texto antes ou 
     "tem_especificidade": true,
     "tem_parenteses_consequencia": false,
     "qualidade_geral": "Forte|Médio|Fraco|Ausentes"
+  },
+  "linguagem_detalhada": {
+    "nivel": "Genérica|Coloquial|Visceral",
+    "nota_visceral": 0,
+    "trechos_genericos": [
+      { "original": "", "reescrita_visceral": "" },
+      { "original": "", "reescrita_visceral": "" },
+      { "original": "", "reescrita_visceral": "" }
+    ],
+    "verbos_fracos_encontrados": [],
+    "verbos_fortes_sugeridos": []
   },
   "visual": {
     "formato": "VSL|UGC|Talking Head|B-Roll|Motion Graphics|Misto",
@@ -185,43 +179,111 @@ RETORNE APENAS um JSON válido. Sem markdown, sem backticks, sem texto antes ou 
     "pontos_fortes": ["3-5 pontos fortes específicos com referência ao framework"],
     "pontos_fracos": ["3-5 pontos fracos ou ausências com referência ao framework"],
     "top3_melhorias": [
-      { "prioridade": 1, "acao": "O que fazer", "justificativa": "Por que melhora", "impacto": "Alto|Médio", "framework": "Qual framework sustenta" },
+      { "prioridade": 1, "acao": "", "justificativa": "", "impacto": "Alto|Médio", "framework": "" },
       { "prioridade": 2, "acao": "", "justificativa": "", "impacto": "", "framework": "" },
       { "prioridade": 3, "acao": "", "justificativa": "", "impacto": "", "framework": "" }
     ]
   },
   "gerador": {
     "hooks_alternativos": [
-      { "angulo": "nome do ângulo", "hook": "texto completo do hook sugerido", "beneficio_camada": "Desejo|Funcional|Dimensional|Emocional" },
-      { "angulo": "", "hook": "", "beneficio_camada": "" },
-      { "angulo": "", "hook": "", "beneficio_camada": "" },
-      { "angulo": "", "hook": "", "beneficio_camada": "" },
-      { "angulo": "", "hook": "", "beneficio_camada": "" }
+      { "angulo": "", "hook": "", "beneficio_camada": "Desejo", "teasing_usado": "" },
+      { "angulo": "", "hook": "", "beneficio_camada": "Funcional", "teasing_usado": "" },
+      { "angulo": "", "hook": "", "beneficio_camada": "Dimensional", "teasing_usado": "" },
+      { "angulo": "", "hook": "", "beneficio_camada": "Emocional", "teasing_usado": "" },
+      { "angulo": "", "hook": "", "beneficio_camada": "Livre", "teasing_usado": "" }
     ],
     "bullets_sugeridos": [
-      { "tipo": "nome do tipo dos 21", "bullet": "texto completo do bullet", "posicao_ideal": "Em qual bloco usar" },
-      { "tipo": "", "bullet": "", "posicao_ideal": "" },
-      { "tipo": "", "bullet": "", "posicao_ideal": "" },
-      { "tipo": "", "bullet": "", "posicao_ideal": "" },
-      { "tipo": "", "bullet": "", "posicao_ideal": "" }
+      { "tipo": "", "esfera": "Social", "bullet": "", "posicao_ideal": "", "tem_nomeacao": true, "tem_parenteses": false },
+      { "tipo": "", "esfera": "Íntima", "bullet": "", "posicao_ideal": "", "tem_nomeacao": true, "tem_parenteses": true },
+      { "tipo": "", "esfera": "Profissional", "bullet": "", "posicao_ideal": "", "tem_nomeacao": false, "tem_parenteses": false },
+      { "tipo": "", "esfera": "Digital", "bullet": "", "posicao_ideal": "", "tem_nomeacao": true, "tem_parenteses": true },
+      { "tipo": "", "esfera": "Pessoal", "bullet": "", "posicao_ideal": "", "tem_nomeacao": false, "tem_parenteses": false }
     ],
-    "mup_alternativo": "Sugestão de MUP alternativo se o atual for fraco ou ausente",
-    "msol_alternativo": "Sugestão de MSOL com nome proprietário alternativo",
-    "future_pacing_sugerido": "Texto de future pacing para usar antes do CTA final"
+    "mup_alternativo": "",
+    "msol_alternativo": "",
+    "future_pacing_sugerido": ""
   }
 }
 
 REGRAS DE PONTUAÇÃO:
-- Notas de 0 a 10 por bloco
-- Nota geral = média ponderada: hook(peso 2) + mup(1.5) + msol(1.5) + provas(1.2) + resto(1)
-- Classificação: 0-3=Fraco, 4-5=Mediano, 6-7=Bom, 8-9=Forte, 10=Excepcional
-- Seja RIGOROSO. Um ad mediano de mercado tira 4-6. Só ads verdadeiramente escalados tiram 8+.
-- Ausência de um bloco = nota 0 nesse bloco.
+- Notas de 0 a 10 por bloco. Nota geral = média ponderada: hook(×2) + mup(×1.5) + msol(×1.5) + provas(×1.2) + resto(×1).
+- Classificação: 0-3=Fraco, 4-5=Mediano, 6-7=Bom, 8-9=Forte, 10=Excepcional.
+- Seja RIGOROSO. Um ad mediano tira 4-6. Só ads verdadeiramente escalados tiram 8+. Ausência de bloco = nota 0.
 
-REGRAS DE GERAÇÃO:
-- Hooks alternativos: usar 5 ângulos DIFERENTES do que já foi usado. Manter o mesmo produto/nicho.
-- Bullets sugeridos: usar 5 tipos DIFERENTES. Incluir nomeação proprietária. Aplicar os 3 passos de refinamento.
-- Todos os textos gerados em português brasileiro, tom coloquial de direct response, linguagem visceral.`;
+MINERAÇÃO DE TEASINGS:
+- Para cada mecanismo (MUP, MUF, MUS), gerar 3 reformulações curiosas (máx 15 palavras cada) que geram curiosidade sem revelar o mecanismo.
+- Gerar 3 nomes chiclete memoráveis (2-3 palavras) para o mecanismo/efeito/técnica.
+- Se mecanismo não identificado, gerar teasings baseados no nicho e promessa.
+
+SUB-PERSONAS:
+- Identificar sub-persona atual com medo dominante, desejo dominante e objeção principal.
+- Sugerir 3 alternativas genuinamente diferentes do mesmo nicho, com adaptações de hook e medo para cada uma.
+
+INVALIDAÇÃO EXPANDIDA:
+- Para cada ciclo: avaliar reason why (Científico/Lógico/Opinião/Ausente), se conectada ao MUP, qualidade Forte/Médio/Fraco.
+- Sugerir 2 invalidações adicionais baseadas no MUP com texto pronto.
+
+ANÁLISE DE LINGUAGEM VISCERAL:
+- Classificar: Genérica / Coloquial / Visceral.
+- Encontrar até 3 trechos genéricos e reescrever com linguagem sensorial (mesmo significado, 10x mais impacto).
+- Listar verbos fracos e sugerir substituições viscerais.
+
+HOOKS ALTERNATIVOS — OBRIGATÓRIO uma de cada camada: Desejo / Funcional / Dimensional / Emocional / Livre.
+Cada hook com ângulo DIFERENTE do original e entre si. Usar teasings minerados como matéria-prima.
+
+BULLETS POR ESFERA — Um bullet para cada esfera: Social / Íntima / Profissional / Digital / Pessoal.
+Tipos diferentes dos 21. Pelo menos 3 com nomeação proprietária. Pelo menos 2 com parênteses de consequência.`;
+
+export const REWRITE_BLOCK_PROMPT = (
+  bloco: string,
+  trecho: string,
+  nota: number,
+  obs: string,
+  variaveis: Record<string, unknown>
+) => `Reescreva APENAS o bloco "${bloco}" deste anúncio de Direct Response.
+
+CONTEXTO DO ANÚNCIO:
+- Público-alvo: ${(variaveis.publico_alvo as string) || "não identificado"}
+- MUP: ${((variaveis.mup as Record<string,string>)?.descricao) || "não identificado"}
+- MUF: ${((variaveis.muf as Record<string,string>)?.descricao) || "não identificado"}
+- MUS: ${((variaveis.mus as Record<string,string>)?.descricao) || "não identificado"}
+- Promessa: ${((variaveis.promessa as Record<string,string>)?.descricao) || "não identificada"}
+- Expert: ${((variaveis.expert as Record<string,string>)?.descricao) || "não identificado"}
+
+BLOCO ATUAL: "${trecho}"
+NOTA ATUAL: ${nota}/10
+PROBLEMAS: ${obs}
+
+REGRAS POR BLOCO:
+- HOOK: Fórmula Ângulo+Benefício. Usar um dos 21 ângulos. Gerar 3 versões.
+- QUALIFICAÇÃO: "Se você..." que gere identificação imediata. Gerar 2 versões.
+- INVALIDAÇÃO: 2-3 soluções que falharam + reason why conectado ao MUP. Gerar 2 versões.
+- SPOILER DO MUP: Plantar semente sem revelar. Gerar curiosidade. Gerar 2 versões.
+- APROFUNDAMENTO DE MEDO: Cenário sombrio visceral. Emocional>Social>Físico. Linguagem sensorial. Gerar 2 versões.
+- EXPLICAÇÃO DO MUP: Causa raiz com analogia sensorial. "É como..." Gerar 2 versões.
+- INVALIDAÇÃO REFORÇADA: Por que falham à luz do MUP. Com fundamento. Gerar 2 versões.
+- EXPERT: 3 camadas (Cargo+Pioneirismo+Especialização). Gerar 2 versões.
+- SPOILER DO MSOL: Nome proprietário+tempo curto+simplicidade+qualquer pessoa. Gerar 2 versões.
+- PROVAS: Empilhar 3+ tipos diferentes. Gerar 1 versão.
+- CTA + FUTURE PACING: CTA para assistir + "Imagine..." com projeção emocional. Gerar 2 versões.
+- ESCASSEZ: Inimigo comum+escassez real+CTA urgente final. Gerar 2 versões.
+
+Retorne APENAS JSON puro:
+{"bloco":"${bloco}","versoes":[{"versao":1,"texto":"","nota_estimada":0,"o_que_mudou":""},{"versao":2,"texto":"","nota_estimada":0,"o_que_mudou":""}]}
+
+Português brasileiro. Tom coloquial de direct response. Linguagem VISCERAL e sensorial. Nota mínima 7.`;
+
+export const REMESSA_PROMPT = (analysisContext: string) =>
+  `Com base na análise do anúncio abaixo, gere uma REMESSA CORINGA de 6 ads com 2 aberturas cada (12 variações testáveis).
+
+REGRA SIGO 50/50: 3 ads usam ângulos já validados no nicho, 3 ads testam ângulos novos.
+Distribuir pelo menos 2 sub-personas diferentes. Ângulos, teasings e camadas diferentes entre ads.
+
+DADOS DA ANÁLISE:
+${analysisContext}
+
+Retorne APENAS JSON puro:
+{"remessa":[{"ad_numero":1,"tipo":"Validado|Novo","sub_persona":"","angulo":"","teasing_principal":"","camada_beneficio":"Desejo|Funcional|Dimensional|Emocional","abertura_1":"","abertura_2":"","diferencial":""},{"ad_numero":2,"tipo":"","sub_persona":"","angulo":"","teasing_principal":"","camada_beneficio":"","abertura_1":"","abertura_2":"","diferencial":""},{"ad_numero":3,"tipo":"","sub_persona":"","angulo":"","teasing_principal":"","camada_beneficio":"","abertura_1":"","abertura_2":"","diferencial":""},{"ad_numero":4,"tipo":"","sub_persona":"","angulo":"","teasing_principal":"","camada_beneficio":"","abertura_1":"","abertura_2":"","diferencial":""},{"ad_numero":5,"tipo":"","sub_persona":"","angulo":"","teasing_principal":"","camada_beneficio":"","abertura_1":"","abertura_2":"","diferencial":""},{"ad_numero":6,"tipo":"","sub_persona":"","angulo":"","teasing_principal":"","camada_beneficio":"","abertura_1":"","abertura_2":"","diferencial":""}],"logica_da_remessa":""}`;
 
 export function buildDRPrompt(transcription: string, historyContext: string): string {
   return (

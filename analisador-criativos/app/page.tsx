@@ -20,6 +20,16 @@ interface FeedbackEntry {
 
 interface ScoreEntry { nota: number; label: string; obs: string; }
 
+interface SubPersona {
+  descricao?: string; medo_dominante?: string; desejo_dominante?: string; objecao_principal?: string;
+  como_adaptaria_hook?: string; como_adaptaria_medo?: string;
+}
+
+interface InvalidacaoCiclo {
+  solucoes_invalidadas?: string[]; tem_reason_why?: boolean; reason_why_tipo?: string;
+  conectada_ao_mup?: boolean; qualidade?: string; trecho?: string;
+}
+
 interface AnalysisResult {
   scorecard?: {
     nota_geral?: number;
@@ -39,50 +49,56 @@ interface AnalysisResult {
     mus?: { identificado?: boolean; nome?: string; tem_nome_proprietario?: boolean; tem_tempo_curto?: boolean; tem_simplicidade?: boolean; descricao?: string };
     promessa?: { camadas_usadas?: string[]; tipo?: string; descricao?: string };
   };
+  sub_personas?: {
+    atual?: SubPersona;
+    alternativas?: SubPersona[];
+  };
+  teasings?: {
+    mup_teasings?: string[];
+    muf_teasings?: string[];
+    mus_teasings?: string[];
+    nomes_chiclete?: string[];
+  };
   analise_hook?: {
-    angulo_identificado?: string;
-    beneficio_tipo?: string;
-    beneficio_camada?: string;
-    forca?: string;
-    texto_do_hook?: string;
-    justificativa?: string;
+    angulo_identificado?: string; beneficio_tipo?: string; beneficio_camada?: string;
+    forca?: string; texto_do_hook?: string; justificativa?: string;
   };
   estrutura?: {
     blocos_presentes?: { bloco: string; qualidade: string; trecho: string }[];
     blocos_ausentes?: string[];
     formato_usado?: string;
-    invalidacoes?: { quantidade?: number; solucoes_invalidadas?: string[]; tem_reason_why_cientifico?: boolean };
+    invalidacoes?: {
+      quantidade?: number;
+      ciclos?: InvalidacaoCiclo[];
+      invalidacoes_sugeridas?: { solucao_a_invalidar: string; reason_why: string; texto_sugerido: string }[];
+    };
     provas?: { tipos_encontrados?: string[]; quantidade?: number; qualidade?: string };
     ctas?: { quantidade?: number; distribuicao?: string; destino?: string };
   };
   bullets?: {
     encontrados?: { tipo: string; texto: string; qualidade: string }[];
-    tem_nomeacao_proprietaria?: boolean;
-    tem_especificidade?: boolean;
-    tem_parenteses_consequencia?: boolean;
-    qualidade_geral?: string;
+    tem_nomeacao_proprietaria?: boolean; tem_especificidade?: boolean;
+    tem_parenteses_consequencia?: boolean; qualidade_geral?: string;
+  };
+  linguagem_detalhada?: {
+    nivel?: string; nota_visceral?: number;
+    trechos_genericos?: { original: string; reescrita_visceral: string }[];
+    verbos_fracos_encontrados?: string[];
+    verbos_fortes_sugeridos?: string[];
   };
   visual?: {
-    formato?: string;
-    hook_visual_descricao?: string;
-    presenca_humana?: string;
-    tipo_presenca?: string;
-    texto_em_tela?: boolean;
-    tipos_texto?: string[];
-    ritmo_edicao?: string;
-    cta_visual?: string;
+    formato?: string; hook_visual_descricao?: string; presenca_humana?: string;
+    tipo_presenca?: string; texto_em_tela?: boolean; tipos_texto?: string[];
+    ritmo_edicao?: string; cta_visual?: string;
   };
   diagnostico?: {
-    pontos_fortes?: string[];
-    pontos_fracos?: string[];
+    pontos_fortes?: string[]; pontos_fracos?: string[];
     top3_melhorias?: { prioridade: number; acao: string; justificativa: string; impacto: string; framework: string }[];
   };
   gerador?: {
-    hooks_alternativos?: { angulo: string; hook: string; beneficio_camada: string }[];
-    bullets_sugeridos?: { tipo: string; bullet: string; posicao_ideal: string }[];
-    mup_alternativo?: string;
-    msol_alternativo?: string;
-    future_pacing_sugerido?: string;
+    hooks_alternativos?: { angulo: string; hook: string; beneficio_camada: string; teasing_usado?: string }[];
+    bullets_sugeridos?: { tipo: string; esfera?: string; bullet: string; posicao_ideal: string; tem_nomeacao?: boolean; tem_parenteses?: boolean }[];
+    mup_alternativo?: string; msol_alternativo?: string; future_pacing_sugerido?: string;
   };
   raw?: string;
 }
@@ -229,7 +245,143 @@ function CollapsibleSection({ title, emoji, children, defaultOpen = false }: { t
   );
 }
 
+// ─── Rewrite Block Modal ─────────────────────────────────────────────────────
+
+function RewriteBlockModal({ bloco, trecho, nota, variaveis, onClose }: {
+  bloco: string; trecho: string; nota: number; variaveis: AnalysisResult["variaveis"]; onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [versoes, setVersoes] = useState<{ versao: number; texto: string; nota_estimada: number; o_que_mudou: string }[]>([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/rewrite-block", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bloco, trecho, nota, obs: "", variaveis: variaveis || {} }),
+    })
+      .then(r => r.json())
+      .then(data => { setVersoes(data.versoes || []); })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [bloco, trecho, nota, variaveis]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 px-4 pb-10" style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)", overflowY: "auto" }} onClick={onClose}>
+      <div className="w-full max-w-lg card p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-bold text-white">✏️ Reescrever Bloco</h2>
+            <p className="text-xs mt-0.5" style={{ color: "#818cf8" }}>{bloco}</p>
+          </div>
+          <button onClick={onClose} className="text-sm px-3 py-1 rounded-lg" style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>✕</button>
+        </div>
+        {trecho && (
+          <div className="rounded-lg p-3 mb-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Trecho original</p>
+            <p className="text-sm italic" style={{ color: "rgba(255,255,255,0.65)" }}>&ldquo;{trecho}&rdquo;</p>
+          </div>
+        )}
+        {loading && <p className="text-center py-8" style={{ color: "rgba(255,255,255,0.4)" }}>Gerando versões...</p>}
+        {error && <p className="text-sm py-4" style={{ color: "#ef4444" }}>{error}</p>}
+        <div className="space-y-3">
+          {versoes.map((v, i) => (
+            <div key={i} className="rounded-xl p-4" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold" style={{ color: "#818cf8" }}>Versão {v.versao}</span>
+                  {v.nota_estimada && <span className="text-xs font-mono" style={{ color: getScoreColor(v.nota_estimada) }}>{v.nota_estimada}/10</span>}
+                </div>
+                <CopyButton text={v.texto} />
+              </div>
+              <p className="text-sm" style={{ color: "#e2e8f0", lineHeight: 1.6 }}>{v.texto}</p>
+              {v.o_que_mudou && <p className="text-xs mt-2 italic" style={{ color: "rgba(255,255,255,0.4)" }}>{v.o_que_mudou}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Remessa Modal ───────────────────────────────────────────────────────────
+
+function RemessaModal({ analysis, onClose }: { analysis: AnalysisResult; onClose: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [remessa, setRemessa] = useState<{ titulo: string; abertura_1: string; abertura_2: string; corpo: string; cta: string; badge?: string }[]>([]);
+  const [logica, setLogica] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/generate-remessa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ analysis }),
+    })
+      .then(r => r.json())
+      .then(data => { setRemessa(data.remessa || []); setLogica(data.logica_da_remessa || ""); })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [analysis]);
+
+  const allText = remessa.map((r, i) => `--- Ad ${i+1}: ${r.titulo} ---\nAbertura A: ${r.abertura_1}\nAbertura B: ${r.abertura_2}\nCorpo: ${r.corpo}\nCTA: ${r.cta}`).join("\n\n");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 px-4 pb-10" style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)", overflowY: "auto" }} onClick={onClose}>
+      <div className="w-full max-w-3xl card p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-bold text-white text-lg">📦 Remessa Coringa</h2>
+            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>6 variações de anúncio com 2 aberturas cada</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {remessa.length > 0 && <CopyButton text={allText} />}
+            <button onClick={onClose} className="text-sm px-3 py-1 rounded-lg" style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>✕</button>
+          </div>
+        </div>
+        {loading && <p className="text-center py-12" style={{ color: "rgba(255,255,255,0.4)" }}>Gerando remessa...</p>}
+        {error && <p className="text-sm py-4" style={{ color: "#ef4444" }}>{error}</p>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {remessa.map((r, i) => (
+            <div key={i} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8" }}>Ad {i+1}</span>
+                  {r.badge && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: r.badge === "Validado" ? "rgba(34,197,94,0.15)" : "rgba(234,179,8,0.15)", color: r.badge === "Validado" ? "#4ade80" : "#eab308" }}>{r.badge}</span>}
+                </div>
+                <CopyButton text={`${r.abertura_1}\n\n${r.corpo}\n\n${r.cta}`} />
+              </div>
+              <p className="text-sm font-bold text-white mb-3">{r.titulo}</p>
+              <div className="space-y-2">
+                <div className="rounded p-2" style={{ background: "rgba(99,102,241,0.06)" }}>
+                  <p className="text-xs mb-0.5" style={{ color: "#818cf8" }}>Abertura A</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>{r.abertura_1}</p>
+                </div>
+                <div className="rounded p-2" style={{ background: "rgba(139,92,246,0.06)" }}>
+                  <p className="text-xs mb-0.5" style={{ color: "#a78bfa" }}>Abertura B</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>{r.abertura_2}</p>
+                </div>
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{r.corpo}</p>
+                <p className="text-xs font-semibold" style={{ color: "#22c55e" }}>{r.cta}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        {logica && !loading && (
+          <div className="mt-4 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xs font-bold mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Lógica da remessa</p>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{logica}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; transcription?: string }) {
+  const [rewriteTarget, setRewriteTarget] = useState<{ bloco: string; trecho: string; nota: number } | null>(null);
   // Compute nota_geral client-side as fallback for weighted average
   const notas = analysis.scorecard?.notas;
   const computedScore = notas
@@ -259,6 +411,15 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
 
   return (
     <div className="animate-fade-in space-y-4">
+      {rewriteTarget && (
+        <RewriteBlockModal
+          bloco={rewriteTarget.bloco}
+          trecho={rewriteTarget.trecho}
+          nota={rewriteTarget.nota}
+          variaveis={analysis.variaveis}
+          onClose={() => setRewriteTarget(null)}
+        />
+      )}
 
       {/* ── SCORECARD ── */}
       <div className="card p-6">
@@ -381,6 +542,75 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
               </div>
             )}
           </div>
+
+          {/* Sub-personas */}
+          {analysis.sub_personas && (
+            <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+              <p className="text-xs font-bold mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Sub-personas</p>
+              {analysis.sub_personas.atual && (
+                <div className="rounded-xl p-3 mb-3" style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)" }}>
+                  <p className="text-xs font-bold mb-1" style={{ color: "#818cf8" }}>Persona Atual</p>
+                  <p className="text-sm font-semibold text-white mb-2">{analysis.sub_personas.atual.descricao}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[["Medo", analysis.sub_personas.atual.medo_dominante], ["Desejo", analysis.sub_personas.atual.desejo_dominante], ["Objeção", analysis.sub_personas.atual.objecao_principal]].map(([l, v]) => v ? (
+                      <div key={l}><p className="text-xs mb-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{l}</p><p className="text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>{v}</p></div>
+                    ) : null)}
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                {(analysis.sub_personas.alternativas || []).filter(a => a.descricao).map((alt, i) => (
+                  <div key={i} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-xs font-semibold text-white mb-1">{alt.descricao}</p>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      {[["Medo", alt.medo_dominante], ["Desejo", alt.desejo_dominante]].map(([l, v]) => v ? (
+                        <div key={l}><p className="text-xs mb-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{l}</p><p className="text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>{v}</p></div>
+                      ) : null)}
+                    </div>
+                    {alt.como_adaptaria_hook && <p className="text-xs italic" style={{ color: "rgba(255,255,255,0.45)" }}>Hook: {alt.como_adaptaria_hook}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CollapsibleSection>
+      )}
+
+      {/* ── TEASINGS MINERADOS ── */}
+      {analysis.teasings && (
+        <CollapsibleSection title="Teasings Minerados" emoji="⛏️" defaultOpen={false}>
+          <div className="space-y-4">
+            {[
+              { label: "MUP", items: analysis.teasings.mup_teasings, color: "#ef4444", bg: "rgba(239,68,68,0.06)" },
+              { label: "MUF", items: analysis.teasings.muf_teasings, color: "#eab308", bg: "rgba(234,179,8,0.06)" },
+              { label: "MUS", items: analysis.teasings.mus_teasings, color: "#22c55e", bg: "rgba(34,197,94,0.06)" },
+            ].map(({ label, items, color, bg }) => items && items.length > 0 && (
+              <div key={label}>
+                <p className="text-xs font-bold mb-2" style={{ color }}>{label} Teasings</p>
+                <div className="space-y-2">
+                  {items.filter(Boolean).map((t, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-lg p-3" style={{ background: bg, border: `1px solid ${color}20` }}>
+                      <p className="text-sm flex-1 mr-3" style={{ color: "rgba(255,255,255,0.8)" }}>{t}</p>
+                      <CopyButton text={t} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {analysis.teasings.nomes_chiclete && analysis.teasings.nomes_chiclete.length > 0 && (
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: "#a78bfa" }}>Nomes Chiclete</p>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.teasings.nomes_chiclete.filter(Boolean).map((n, i) => (
+                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)" }}>
+                      <span className="text-sm font-bold" style={{ color: "#c4b5fd" }}>&ldquo;{n}&rdquo;</span>
+                      <CopyButton text={n} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </CollapsibleSection>
       )}
 
@@ -428,11 +658,17 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
                 <div className="space-y-1.5">
                   {analysis.estrutura.blocos_presentes.map((b, i) => (
                     <div key={i} className="flex gap-2 items-start rounded-lg p-2.5" style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.12)" }}>
-                      <span className="text-xs font-bold flex-shrink-0" style={{ color: getScoreColor(b.qualidade === "Forte" ? 9 : b.qualidade === "Médio" ? 6 : 3) }}>{b.qualidade}</span>
-                      <div>
+                      <span className="text-xs font-bold flex-shrink-0 mt-0.5" style={{ color: getScoreColor(b.qualidade === "Forte" ? 9 : b.qualidade === "Médio" ? 6 : 3) }}>{b.qualidade}</span>
+                      <div className="flex-1">
                         <p className="text-xs font-semibold text-white">{b.bloco}</p>
                         {b.trecho && <p className="text-xs mt-0.5 italic" style={{ color: "rgba(255,255,255,0.4)" }}>&ldquo;{b.trecho}&rdquo;</p>}
                       </div>
+                      <button
+                        onClick={() => setRewriteTarget({ bloco: b.bloco, trecho: b.trecho || "", nota: b.qualidade === "Forte" ? 8 : b.qualidade === "Médio" ? 6 : 4 })}
+                        className="text-xs px-2 py-0.5 rounded flex-shrink-0"
+                        style={{ color: "rgba(99,102,241,0.8)", border: "1px solid rgba(99,102,241,0.2)" }}
+                        title="Reescrever este bloco"
+                      >✏️</button>
                     </div>
                   ))}
                 </div>
@@ -462,6 +698,52 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
                 <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>CTAs</p>
               </div>
             </div>
+            {/* Ciclos de invalidação */}
+            {analysis.estrutura.invalidacoes?.ciclos && analysis.estrutura.invalidacoes.ciclos.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-bold mb-2" style={{ color: "rgba(255,255,255,0.5)" }}>Ciclos de Invalidação</p>
+                <div className="space-y-2">
+                  {analysis.estrutura.invalidacoes.ciclos.map((c, i) => {
+                    const qColor = c.qualidade === "Forte" ? "#22c55e" : c.qualidade === "Médio" ? "#eab308" : "#ef4444";
+                    return (
+                      <div key={i} className="rounded-lg p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {c.qualidade && <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: `${qColor}15`, color: qColor }}>{c.qualidade}</span>}
+                          {c.tem_reason_why && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(99,102,241,0.1)", color: "#818cf8" }}>RW: {c.reason_why_tipo || "sim"}</span>}
+                          {c.conectada_ao_mup && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.1)", color: "#fca5a5" }}>🧬 MUP</span>}
+                        </div>
+                        {c.solucoes_invalidadas && c.solucoes_invalidadas.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-1">
+                            {c.solucoes_invalidadas.map((s, si) => <span key={si} className="text-xs line-through" style={{ color: "rgba(255,255,255,0.35)" }}>{s}</span>)}
+                          </div>
+                        )}
+                        {c.trecho && <p className="text-xs italic" style={{ color: "rgba(255,255,255,0.45)" }}>&ldquo;{c.trecho}&rdquo;</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* Invalidações sugeridas */}
+            {analysis.estrutura.invalidacoes?.invalidacoes_sugeridas && analysis.estrutura.invalidacoes.invalidacoes_sugeridas.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-bold mb-2" style={{ color: "#818cf8" }}>Invalidações Sugeridas</p>
+                <div className="space-y-2">
+                  {analysis.estrutura.invalidacoes.invalidacoes_sugeridas.map((s, i) => (
+                    <div key={i} className="rounded-lg p-3" style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.2)" }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold mb-0.5" style={{ color: "#a78bfa" }}>→ {s.solucao_a_invalidar}</p>
+                          {s.reason_why && <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.45)" }}>RW: {s.reason_why}</p>}
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.7)", fontStyle: "italic" }}>&ldquo;{s.texto_sugerido}&rdquo;</p>
+                        </div>
+                        <CopyButton text={s.texto_sugerido} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {analysis.estrutura.provas?.tipos_encontrados && analysis.estrutura.provas.tipos_encontrados.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {analysis.estrutura.provas.tipos_encontrados.map((t, i) => (
@@ -499,6 +781,68 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
             ))}
           </div>
         </CollapsibleSection>
+      )}
+
+      {/* ── LINGUAGEM VISCERAL ── */}
+      {analysis.linguagem_detalhada && (
+        <CollapsibleSection title="Linguagem Visceral" emoji="🔥" defaultOpen={false}>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{
+                  background: analysis.linguagem_detalhada.nivel === "Visceral" ? "rgba(34,197,94,0.12)" : analysis.linguagem_detalhada.nivel === "Coloquial" ? "rgba(234,179,8,0.12)" : "rgba(239,68,68,0.12)",
+                  color: analysis.linguagem_detalhada.nivel === "Visceral" ? "#22c55e" : analysis.linguagem_detalhada.nivel === "Coloquial" ? "#eab308" : "#ef4444",
+                  border: `1px solid ${analysis.linguagem_detalhada.nivel === "Visceral" ? "rgba(34,197,94,0.3)" : analysis.linguagem_detalhada.nivel === "Coloquial" ? "rgba(234,179,8,0.3)" : "rgba(239,68,68,0.3)"}`,
+                }}>{analysis.linguagem_detalhada.nivel}</span>
+                {analysis.linguagem_detalhada.nota_visceral !== undefined && (
+                  <span className="text-sm font-bold" style={{ color: getScoreColor(analysis.linguagem_detalhada.nota_visceral) }}>
+                    {analysis.linguagem_detalhada.nota_visceral}/10
+                  </span>
+                )}
+              </div>
+              {analysis.linguagem_detalhada.trechos_genericos && analysis.linguagem_detalhada.trechos_genericos.filter(t => t.original).length > 0 && (
+                <div>
+                  <p className="text-xs font-bold mb-2" style={{ color: "rgba(255,255,255,0.5)" }}>Antes → Depois</p>
+                  <div className="space-y-3">
+                    {analysis.linguagem_detalhada.trechos_genericos.filter(t => t.original).map((t, i) => (
+                      <div key={i} className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg p-3" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                          <p className="text-xs mb-1" style={{ color: "#ef4444" }}>Original</p>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>{t.original}</p>
+                        </div>
+                        <div className="rounded-lg p-3" style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.15)" }}>
+                          <div className="flex items-start justify-between gap-1">
+                            <p className="text-xs mb-1" style={{ color: "#22c55e" }}>Visceral</p>
+                            <CopyButton text={t.reescrita_visceral} />
+                          </div>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>{t.reescrita_visceral}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {analysis.linguagem_detalhada.verbos_fracos_encontrados && analysis.linguagem_detalhada.verbos_fracos_encontrados.length > 0 && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-bold mb-2" style={{ color: "#ef4444" }}>Verbos Fracos</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {analysis.linguagem_detalhada.verbos_fracos_encontrados.map((v, i) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.08)", color: "#fca5a5" }}>{v}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold mb-2" style={{ color: "#22c55e" }}>Substitutos Fortes</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(analysis.linguagem_detalhada.verbos_fortes_sugeridos || []).map((v, i) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(34,197,94,0.08)", color: "#86efac" }}>{v}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
       )}
 
       {/* ── VISUAL ── */}
@@ -572,18 +916,29 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
               <p className="section-title mb-1">🎯 5 Hooks Alternativos</p>
               <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.35)" }}>Gerados com ângulos diferentes do hook original</p>
               <div className="space-y-3">
-                {analysis.gerador.hooks_alternativos.filter(h => h.hook).map((h, i) => (
-                  <div key={i} className="rounded-xl p-4" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)" }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8" }}>{h.angulo}</span>
-                        {h.beneficio_camada && <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{h.beneficio_camada}</span>}
+                {analysis.gerador.hooks_alternativos.filter(h => h.hook).map((h, i) => {
+                  const camadaColors: Record<string, { bg: string; color: string }> = {
+                    "Desejo": { bg: "rgba(59,130,246,0.15)", color: "#60a5fa" },
+                    "Funcional": { bg: "rgba(34,197,94,0.15)", color: "#4ade80" },
+                    "Dimensional": { bg: "rgba(139,92,246,0.15)", color: "#a78bfa" },
+                    "Emocional": { bg: "rgba(236,72,153,0.15)", color: "#f472b6" },
+                    "Livre": { bg: "rgba(107,114,128,0.15)", color: "#9ca3af" },
+                  };
+                  const cc = h.beneficio_camada ? (camadaColors[h.beneficio_camada] || camadaColors["Livre"]) : null;
+                  return (
+                    <div key={i} className="rounded-xl p-4" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)" }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8" }}>{h.angulo}</span>
+                          {cc && <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: cc.bg, color: cc.color }}>{h.beneficio_camada}</span>}
+                          {h.teasing_usado && <span className="text-xs italic px-2 py-0.5 rounded" style={{ background: "rgba(234,179,8,0.08)", color: "#eab308" }}>⛏ {h.teasing_usado}</span>}
+                        </div>
+                        <CopyButton text={h.hook} />
                       </div>
-                      <CopyButton text={h.hook} />
+                      <p className="text-sm font-semibold" style={{ color: "#e2e8f0", lineHeight: 1.5 }}>{h.hook}</p>
                     </div>
-                    <p className="text-sm font-semibold" style={{ color: "#e2e8f0", lineHeight: 1.5 }}>{h.hook}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -594,18 +949,25 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
               <p className="section-title mb-1">💎 5 Bullets Sugeridos</p>
               <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.35)" }}>Refinados com especificidade + curiosidade + benefício</p>
               <div className="space-y-3">
-                {analysis.gerador.bullets_sugeridos.filter(b => b.bullet).map((b, i) => (
-                  <div key={i} className="rounded-xl p-4" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa" }}>{b.tipo}</span>
-                        {b.posicao_ideal && <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{b.posicao_ideal}</span>}
+                {analysis.gerador.bullets_sugeridos.filter(b => b.bullet).map((b, i) => {
+                  const esferaIcons: Record<string, string> = { "Social": "👥", "Íntima": "💕", "Profissional": "💼", "Digital": "📱", "Pessoal": "🪞" };
+                  const esferaColors: Record<string, string> = { "Social": "#38bdf8", "Íntima": "#f472b6", "Profissional": "#facc15", "Digital": "#34d399", "Pessoal": "#c084fc" };
+                  return (
+                    <div key={i} className="rounded-xl p-4" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa" }}>{b.tipo}</span>
+                          {b.esfera && <span className="text-xs font-semibold" style={{ color: esferaColors[b.esfera] || "#9ca3af" }}>{esferaIcons[b.esfera] || ""} {b.esfera}</span>}
+                          {b.posicao_ideal && <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{b.posicao_ideal}</span>}
+                          {b.tem_nomeacao && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(34,197,94,0.1)", color: "#4ade80" }}>©</span>}
+                          {b.tem_parenteses && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(99,102,241,0.1)", color: "#818cf8" }}>()</span>}
+                        </div>
+                        <CopyButton text={b.bullet} />
                       </div>
-                      <CopyButton text={b.bullet} />
+                      <p className="text-sm font-semibold" style={{ color: "#e2e8f0", lineHeight: 1.5 }}>{b.bullet}</p>
                     </div>
-                    <p className="text-sm font-semibold" style={{ color: "#e2e8f0", lineHeight: 1.5 }}>{b.bullet}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -886,6 +1248,42 @@ function HistoricoPanel({ onClose }: { onClose: () => void }) {
             Nenhum resultado registrado ainda.
           </p>
         )}
+
+        {/* Padrões detectados (min 5 ads) */}
+        {entries.length >= 5 && (() => {
+          const escalaram = entries.filter(e => e.resultado === "Escalou" || e.resultado === "Bom");
+          const ruims = entries.filter(e => e.resultado === "Ruim" || e.resultado === "Morreu rápido");
+          const avgNota = (arr: FeedbackEntry[]) => arr.length ? (arr.reduce((s, e) => s + e.notaGemini, 0) / arr.length).toFixed(1) : "—";
+          const topFormato = (arr: FeedbackEntry[]) => {
+            const counts: Record<string, number> = {};
+            arr.forEach(e => { if (e.formato) counts[e.formato] = (counts[e.formato] || 0) + 1; });
+            return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+          };
+          return (
+            <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}>
+              <p className="text-sm font-bold text-white mb-3">📊 Padrões Identificados</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg p-3" style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
+                  <p className="text-xs font-bold mb-1" style={{ color: "#4ade80" }}>✅ Funcionaram ({escalaram.length})</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>Nota média: {avgNota(escalaram)}/10</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>Formato top: {topFormato(escalaram)}</p>
+                </div>
+                <div className="rounded-lg p-3" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                  <p className="text-xs font-bold mb-1" style={{ color: "#f87171" }}>❌ Não funcionaram ({ruims.length})</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>Nota média: {avgNota(ruims)}/10</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>Formato top: {topFormato(ruims)}</p>
+                </div>
+              </div>
+              {escalaram.length > 0 && ruims.length > 0 && (
+                <p className="text-xs mt-3 italic" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  {Number(avgNota(escalaram)) > Number(avgNota(ruims))
+                    ? `Criativos com nota acima de ${avgNota(escalaram)} tendem a performar melhor nesta conta.`
+                    : `Alta nota não garante resultado — analise o hook e formato.`}
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="space-y-3">
           {entries.map((e) => (
@@ -1223,6 +1621,7 @@ export default function Home() {
   const [showManual, setShowManual] = useState(false);
   const [showHistorico, setShowHistorico] = useState(false);
   const [showScript, setShowScript] = useState(false);
+  const [showRemessa, setShowRemessa] = useState(false);
   const [feedbackSaved, setFeedbackSaved] = useState(false);
 
   // Save last analysis to localStorage for Script Generator
@@ -1354,6 +1753,7 @@ export default function Home() {
     setShowManual(false);
     setFeedbackSaved(false);
     setShowScript(false);
+    setShowRemessa(false);
   };
 
   const isProcessing = step === "uploading" || step === "transcribing" || step === "analyzing";
@@ -1403,12 +1803,21 @@ export default function Home() {
             </button>
           )}
           <div className="flex items-center gap-2">
+            {analysis && (
+              <button
+                onClick={() => setShowRemessa(true)}
+                className="text-sm px-4 py-1.5 rounded-lg flex items-center gap-1.5"
+                style={{ border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80" }}
+              >
+                📦 Remessa
+              </button>
+            )}
             <button
               onClick={() => setShowScript(true)}
               className="text-sm px-4 py-1.5 rounded-lg flex items-center gap-1.5"
               style={{ border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa" }}
             >
-              🎙️ Gerar Script
+              🎙️ Script
             </button>
             <button
               onClick={() => setShowHistorico(true)}
@@ -1423,6 +1832,7 @@ export default function Home() {
 
       {showHistorico && <HistoricoPanel onClose={() => setShowHistorico(false)} />}
       {showScript && <ScriptGeneratorPanel onClose={() => setShowScript(false)} />}
+      {showRemessa && analysis && <RemessaModal analysis={analysis} onClose={() => setShowRemessa(false)} />}
 
       <main className="max-w-5xl mx-auto px-6 py-10">
         {/* Upload Screen */}
