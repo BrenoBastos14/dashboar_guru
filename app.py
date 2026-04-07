@@ -482,150 +482,104 @@ with tab_fb:
     # KPIs Facebook
     # -----------------------------------------------------------------------
     total_gasto = df_fb["gasto"].sum() if "gasto" in df_fb.columns else 0.0
-    fb_k1, fb_k2, fb_k3 = st.columns(3)
-    fb_k1.metric("Total Gasto (FB Ads)", _brl(total_gasto))
+    st.metric("Total Gasto (FB Ads)", _brl(total_gasto))
 
-    # Cruzamento com Guru (se disponível)
-    guru_available = uploaded_file is not None and "df_filtered" in dir()
+    hora_disponivel = "hora" in df_fb.columns and df_fb["hora"].notna().any()
 
-    if guru_available and not df_filtered.empty:
-        df_merged = merge_fb_guru(df_fb, df_filtered)
-        total_receita_fb = df_merged["receita"].sum() if "receita" in df_merged.columns else 0.0
-        total_vendas_fb = int(df_merged["vendas"].sum()) if "vendas" in df_merged.columns else 0
-        roas_geral = total_receita_fb / total_gasto if total_gasto > 0 else 0.0
-        cpa_geral = total_gasto / total_vendas_fb if total_vendas_fb > 0 else 0.0
-
-        fb_k2.metric("Receita Atribuída (Guru)", _brl(total_receita_fb))
-        fb_k3.metric("ROAS Geral", f"{roas_geral:.2f}x")
-
-        m1, m2 = st.columns(2)
-        m1.metric("Vendas Atribuídas", f"{total_vendas_fb:,}")
-        m2.metric("CPA Médio", _brl(cpa_geral))
-
-        st.divider()
-
-        # -------------------------------------------------------------------
-        # Tabelas por nível
-        # -------------------------------------------------------------------
-        nivel = st.radio(
-            "Visualizar por",
-            ["Campanha", "Conjunto de Anúncios", "Anúncio", "Hora do Dia"],
-            horizontal=True,
+    if not hora_disponivel:
+        st.warning(
+            "**Coluna de hora não encontrada no arquivo.**\n\n"
+            "Para ver métricas por hora, exporte o relatório com a quebra **'Hora do dia'** "
+            "ativada no Gerenciador de Anúncios."
         )
 
-        nivel_map = {
-            "Campanha": ["campanha"],
-            "Conjunto de Anúncios": ["campanha", "conjunto"],
-            "Anúncio": ["campanha", "conjunto", "anuncio"],
-            "Hora do Dia": ["hora"],
-        }
-        group_cols = nivel_map[nivel]
+    st.divider()
 
-        # Se "Hora do Dia" selecionado mas hora não foi detectada no arquivo, avisa
-        hora_disponivel = "hora" in df_fb.columns and df_fb["hora"].notna().any()
-        if nivel == "Hora do Dia" and not hora_disponivel:
-            st.warning(
-                "**Coluna de hora não encontrada no arquivo do Facebook Ads.**\n\n"
-                "Para ver métricas por hora, exporte o relatório com a quebra **'Hora do dia'** "
-                "ativada no Gerenciador de Anúncios.\n\n"
-                "Abra o diagnóstico acima para ver quais colunas foram detectadas."
-            )
-        else:
-            tbl = aggregate_fb_metrics(df_merged, group_cols)
+    # -----------------------------------------------------------------------
+    # Pivot: Campanha / Conjunto / Anúncio × Hora do Dia — apenas Gasto
+    # -----------------------------------------------------------------------
+    nivel = st.radio(
+        "Visualizar por",
+        ["Campanha", "Conjunto de Anúncios", "Anúncio"],
+        horizontal=True,
+    )
 
-            # Para "Hora do Dia", ordenar por hora (0-23) em vez de gasto
-            if nivel == "Hora do Dia" and "hora" in tbl.columns:
-                tbl = tbl.sort_values("hora").reset_index(drop=True)
+    nivel_col_map = {
+        "Campanha": "campanha",
+        "Conjunto de Anúncios": "conjunto",
+        "Anúncio": "anuncio",
+    }
+    row_col = nivel_col_map[nivel]
 
-            if tbl.empty:
-                st.warning("Nenhum dado para exibir com o agrupamento selecionado.")
-            else:
-                label_map = {
-                    "campanha": "Campanha",
-                    "conjunto": "Conjunto",
-                    "anuncio": "Anúncio",
-                    "hora": "Hora do Dia",
-                    "gasto": "Gasto (R$)",
-                    "vendas": "Vendas",
-                    "receita": "Receita (R$)",
-                    "roas": "ROAS",
-                    "cpa": "CPA (R$)",
-                }
-                tbl_display = tbl.copy()
-
-                # Format monetary columns
-                for col in ("gasto", "receita", "cpa"):
-                    if col in tbl_display.columns:
-                        tbl_display[col] = tbl_display[col].apply(_brl)
-
-                if "roas" in tbl_display.columns:
-                    tbl_display["roas"] = tbl_display["roas"].apply(lambda v: f"{v:.2f}x")
-
-                if "hora" in tbl_display.columns:
-                    tbl_display["hora"] = tbl_display["hora"].apply(
-                        lambda v: f"{int(v):02d}:00 – {int(v):02d}:59" if pd.notna(v) else "—"
-                    )
-
-                tbl_display = tbl_display.rename(columns=label_map)
-                st.dataframe(tbl_display, use_container_width=True, hide_index=True)
-
-        st.divider()
-
-        # -------------------------------------------------------------------
-        # Pivot: Gasto por Campanha × Dia
-        # -------------------------------------------------------------------
-        if "campanha" in df_merged.columns and "_data" in df_merged.columns:
-            st.subheader("Gasto por Campanha × Dia")
-            df_pivot_fb = df_merged.copy()
-            df_pivot_fb["_dia"] = pd.to_datetime(df_pivot_fb["_data"]).dt.strftime("%d/%m")
-
-            pivot_fb = df_pivot_fb.pivot_table(
-                index="campanha",
-                columns="_dia",
-                values="gasto",
-                aggfunc="sum",
-                fill_value=0,
-            )
-            pivot_fb.index.name = "Campanha"
-            pivot_fb = pivot_fb.loc[pivot_fb.sum(axis=1).sort_values(ascending=False).index]
-
-            vmax_fb = float(pivot_fb.values.max()) if pivot_fb.values.max() > 0 else 1.0
-            styled_fb = pivot_fb.style.map(lambda v: _cell_style_red(v, vmax_fb))
-            styled_fb = styled_fb.format(lambda v: _brl(v) if v > 0 else "—")
-            st.dataframe(styled_fb, use_container_width=True)
-
+    if row_col not in df_fb.columns:
+        st.warning(f"Coluna '{nivel}' não encontrada no arquivo.")
+    elif not hora_disponivel:
+        # Sem hora: tabela simples de gasto por nível
+        tbl_simples = (
+            df_fb.groupby(row_col)["gasto"]
+            .sum()
+            .reset_index()
+            .sort_values("gasto", ascending=False)
+        )
+        tbl_simples["gasto"] = tbl_simples["gasto"].apply(_brl)
+        tbl_simples.columns = [nivel, "Gasto (R$)"]
+        st.dataframe(tbl_simples, use_container_width=True, hide_index=True)
     else:
-        # No Guru data — show only FB metrics
-        fb_k2.metric("Receita Atribuída", "—")
-        fb_k3.metric("ROAS Geral", "—")
+        df_pv = df_fb[[row_col, "hora", "gasto"]].dropna(subset=["hora"]).copy()
+        df_pv["hora"] = df_pv["hora"].astype(int)
 
-        if uploaded_file is None:
-            st.warning(
-                "Faça upload do arquivo de vendas do Guru Manager para cruzar os dados e calcular ROAS, CPA e conversão."
-            )
+        pivot = df_pv.pivot_table(
+            index=row_col,
+            columns="hora",
+            values="gasto",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        # Renomear colunas para "00h", "01h", ...
+        pivot.columns = [f"{int(h):02d}h" for h in pivot.columns]
+        pivot.index.name = nivel
+        # Ordenar linhas por total de gasto
+        pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).index]
+        # Adicionar coluna de total
+        pivot["Total"] = pivot.sum(axis=1)
 
+        vmax = float(pivot.drop(columns="Total").values.max()) if pivot.shape[1] > 1 else 1.0
+
+        def _style_cell(v):
+            if v == 0:
+                return "background-color: #f5f5f5; color: #cccccc"
+            return _cell_style_red(v, vmax)
+
+        styled = pivot.style.map(
+            lambda v: _style_cell(v),
+            subset=[c for c in pivot.columns if c != "Total"],
+        ).format(lambda v: _brl(v) if v > 0 else "—")
+
+        st.dataframe(styled, use_container_width=True)
+
+    # -----------------------------------------------------------------------
+    # Pivot: Gasto por Campanha × Dia (sem cruzamento Guru)
+    # -----------------------------------------------------------------------
+    if "campanha" in df_fb.columns and "data" in df_fb.columns:
         st.divider()
-        st.subheader("Gastos por Campanha")
+        st.subheader("Gasto por Campanha × Dia")
+        df_pv2 = df_fb.copy()
+        df_pv2["_dia"] = pd.to_datetime(df_pv2["data"]).dt.strftime("%d/%m")
 
-        if "campanha" in df_fb.columns and "gasto" in df_fb.columns:
-            tbl_camp = (
-                df_fb.groupby("campanha")["gasto"]
-                .sum()
-                .reset_index()
-                .sort_values("gasto", ascending=False)
-            )
-            tbl_camp["gasto"] = tbl_camp["gasto"].apply(_brl)
-            tbl_camp.columns = ["Campanha", "Gasto (R$)"]
-            st.dataframe(tbl_camp, use_container_width=True, hide_index=True)
+        pivot2 = df_pv2.pivot_table(
+            index="campanha",
+            columns="_dia",
+            values="gasto",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        pivot2.index.name = "Campanha"
+        pivot2 = pivot2.loc[pivot2.sum(axis=1).sort_values(ascending=False).index]
+        pivot2["Total"] = pivot2.sum(axis=1)
 
-        if "conjunto" in df_fb.columns and "gasto" in df_fb.columns:
-            st.subheader("Gastos por Conjunto de Anúncios")
-            tbl_conj = (
-                df_fb.groupby(["campanha", "conjunto"])["gasto"]
-                .sum()
-                .reset_index()
-                .sort_values("gasto", ascending=False)
-            )
-            tbl_conj["gasto"] = tbl_conj["gasto"].apply(_brl)
-            tbl_conj.columns = ["Campanha", "Conjunto", "Gasto (R$)"]
-            st.dataframe(tbl_conj, use_container_width=True, hide_index=True)
+        vmax2 = float(pivot2.drop(columns="Total").values.max()) if pivot2.shape[1] > 1 else 1.0
+        styled2 = pivot2.style.map(
+            lambda v: _cell_style_red(v, vmax2),
+            subset=[c for c in pivot2.columns if c != "Total"],
+        ).format(lambda v: _brl(v) if v > 0 else "—")
+        st.dataframe(styled2, use_container_width=True)
