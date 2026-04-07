@@ -12,6 +12,8 @@ FB_COLUMN_ALIASES = {
     ],
     "anuncio": ["Nome do anúncio", "Ad name", "Anúncio", "Anuncio"],
     "hora_do_dia": [
+        "Hora do dia (fuso horário da conta de anúncios)",
+        "Hora do dia (fuso horário da conta)",
         "Hora do dia", "Hora do Dia", "Hora", "Hour of day",
         "Período (hora do dia)", "Periodo (hora do dia)",
         "Breakdown: Hour of day", "Hour",
