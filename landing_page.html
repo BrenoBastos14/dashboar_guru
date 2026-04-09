@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Podcast Exclusivo — Renata Pocztaruk | IA na Arquitetura</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --preto:   #0a0a0a;
+      --dourado: #c9a84c;
+      --dourado2:#e8c76e;
+      --cinza:   #1c1c1c;
+      --cinza2:  #2a2a2a;
+      --texto:   #f0ede6;
+      --suave:   #a89880;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: var(--preto);
+      color: var(--texto);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ─────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 24px 80px;
+      position: relative;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, #1e1508 0%, var(--preto) 70%);
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(201,168,76,.07) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(201,168,76,.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--dourado);
+      color: var(--dourado);
+      font-family: 'Arial', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 8px 20px;
+      border-radius: 100px;
+      margin-bottom: 40px;
+      opacity: .9;
+    }
+
+    .badge span { font-size: 16px; }
+
+    h1 {
+      font-size: clamp(2rem, 5.5vw, 4rem);
+      font-weight: 700;
+      line-height: 1.18;
+      letter-spacing: -0.5px;
+      max-width: 860px;
+      margin: 0 auto 28px;
+    }
+
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(95deg, var(--dourado), var(--dourado2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitulo {
+      font-size: clamp(1rem, 2.2vw, 1.25rem);
+      color: var(--suave);
+      max-width: 620px;
+      margin: 0 auto 52px;
+      font-style: italic;
+    }
+
+    /* Player simulado */
+    .player {
+      background: var(--cinza2);
+      border: 1px solid rgba(201,168,76,.2);
+      border-radius: 16px;
+      padding: 28px 32px;
+      max-width: 560px;
+      width: 100%;
+      margin: 0 auto 52px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .play-btn {
+      flex-shrink: 0;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--dourado), var(--dourado2));
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .play-btn:hover { transform: scale(1.08); box-shadow: 0 0 24px rgba(201,168,76,.4); }
+    .play-btn svg { margin-left: 4px; }
+
+    .player-info { flex: 1; text-align: left; }
+    .player-info .ep { font-family: 'Arial', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--dourado); text-transform: uppercase; margin-bottom: 4px; }
+    .player-info .titulo-ep { font-size: 1rem; font-weight: 700; color: var(--texto); line-height: 1.3; }
+    .player-info .duracao { font-size: 0.8rem; color: var(--suave); margin-top: 4px; }
+
+    .progress-bar {
+      margin-top: 16px;
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar::after {
+      content: '';
+      display: block;
+      height: 100%;
+      width: 35%;
+      background: linear-gradient(90deg, var(--dourado), var(--dourado2));
+      border-radius: 2px;
+    }
+
+    /* CTA principal */
+    .cta-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--dourado) 0%, var(--dourado2) 100%);
+      color: var(--preto);
+      font-family: 'Arial', sans-serif;
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      padding: 18px 44px;
+      border-radius: 8px;
+      transition: transform .2s, box-shadow .2s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(201,168,76,.35);
+    }
+
+    .garantia {
+      font-size: 0.78rem;
+      color: var(--suave);
+      font-family: 'Arial', sans-serif;
+    }
+
+    /* ── SEÇÃO: SOBRE ──────────────────────────────────── */
+    .sobre {
+      background: var(--cinza);
+      padding: 80px 24px;
+    }
+
+    .container { max-width: 920px; margin: 0 auto; }
+
+    .sobre-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    @media (max-width: 680px) { .sobre-grid { grid-template-columns: 1fr; gap: 40px; } }
+
+    .avatar-wrap {
+      display: flex;
+      justify-content: center;
+    }
+
+    .avatar {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2e2512 0%, #1c1508 100%);
+      border: 3px solid var(--dourado);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 72px;
+      box-shadow: 0 0 40px rgba(201,168,76,.15);
+    }
+
+    .sobre-texto h2 {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .sobre-texto h2 em {
+      font-style: normal;
+      color: var(--dourado);
+    }
+
+    .sobre-texto p {
+      color: var(--suave);
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+    }
+
+    /* ── SEÇÃO: O QUE VOCÊ VAI OUVIR ──────────────────── */
+    .topicos {
+      padding: 80px 24px;
+      background: var(--preto);
+    }
+
+    .topicos h2 {
+      text-align: center;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      margin-bottom: 48px;
+    }
+
+    .topicos h2 em { font-style: normal; color: var(--dourado); }
+
+    .topicos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+    }
+
+    .topico-card {
+      background: var(--cinza2);
+      border: 1px solid rgba(201,168,76,.12);
+      border-radius: 12px;
+      padding: 28px 24px;
+      transition: border-color .2s, transform .2s;
+    }
+    .topico-card:hover { border-color: var(--dourado); transform: translateY(-4px); }
+
+    .topico-card .icone {
+      font-size: 32px;
+      margin-bottom: 14px;
+    }
+
+    .topico-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 8px;
+      color: var(--texto);
+    }
+
+    .topico-card p {
+      font-size: 0.85rem;
+      color: var(--suave);
+      line-height: 1.6;
+    }
+
+    /* ── SEÇÃO: CTA FINAL ──────────────────────────────── */
+    .cta-final {
+      background: radial-gradient(ellipse 80% 80% at 50% 100%, #1e1508 0%, var(--preto) 70%);
+      padding: 100px 24px;
+      text-align: center;
+    }
+
+    .cta-final h2 {
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      max-width: 720px;
+      margin: 0 auto 20px;
+      line-height: 1.2;
+    }
+
+    .cta-final h2 em { font-style: normal; color: var(--dourado); }
+
+    .cta-final p {
+      color: var(--suave);
+      max-width: 500px;
+      margin: 0 auto 40px;
+      font-style: italic;
+    }
+
+    /* ── RODAPÉ ────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid rgba(201,168,76,.1);
+      padding: 28px 24px;
+      text-align: center;
+      font-family: 'Arial', sans-serif;
+      font-size: 0.78rem;
+      color: rgba(168,152,128,.5);
+    }
+
+    /* ── DIVISOR DOURADO ───────────────────────────────── */
+    .divisor {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--dourado), var(--dourado2));
+      margin: 0 auto 32px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     HERO
+══════════════════════════════════════ -->
+<section class="hero">
+  <div class="badge"><span>🎙️</span> Podcast Exclusivo</div>
+
+  <h1>
+    Assista agora o podcast exclusivo da<br>
+    <em>Renata Pocztaruk</em><br>
+    sobre Inteligência Artificial<br>na Arquitetura
+  </h1>
+
+  <p class="subtitulo">
+    Como a IA está transformando o processo criativo, os projetos e o futuro da profissão — por quem vive isso na prática.
+  </p>
+
+  <!-- Player decorativo -->
+  <div class="player">
+    <button class="play-btn" aria-label="Assistir agora">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M8 5v14l11-7L8 5z" fill="#0a0a0a"/>
+      </svg>
+    </button>
+    <div class="player-info">
+      <div class="ep">Episódio Exclusivo</div>
+      <div class="titulo-ep">IA na Arquitetura com Renata Pocztaruk</div>
+      <div class="duracao">1h 24min &nbsp;·&nbsp; Disponível agora</div>
+      <div class="progress-bar"></div>
+    </div>
+  </div>
+
+  <div class="cta-group">
+    <a href="#assistir" class="btn-primary">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M8 5v14l11-7L8 5z" fill="currentColor"/>
+      </svg>
+      Assistir gratuitamente agora
+    </a>
+    <span class="garantia">Acesso imediato · Sem cadastro necessário</span>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     SOBRE A ESPECIALISTA
+══════════════════════════════════════ -->
+<section class="sobre" id="sobre">
+  <div class="container">
+    <div class="sobre-grid">
+      <div class="avatar-wrap">
+        <div class="avatar">👩‍💼</div>
+      </div>
+      <div class="sobre-texto">
+        <h2>Quem é <em>Renata Pocztaruk</em>?</h2>
+        <p>Arquiteta com mais de 15 anos de experiência, Renata é referência nacional na interseção entre design arquitetônico e novas tecnologias.</p>
+        <p>Pioneira na adoção de ferramentas de Inteligência Artificial em escritórios de arquitetura, ela compartilha neste podcast como a IA já está mudando — e vai continuar mudando — tudo que você conhece sobre a profissão.</p>
+        <p>Palestrante, autora e consultora, Renata traz neste episódio exclusivo casos reais, aprendizados e uma visão provocadora sobre o futuro da arquitetura.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     O QUE VOCÊ VAI OUVIR
+══════════════════════════════════════ -->
+<section class="topicos">
+  <div class="container">
+    <div class="divisor"></div>
+    <h2>O que você vai <em>descobrir</em> neste episódio</h2>
+    <div class="topicos-grid">
+      <div class="topico-card">
+        <div class="icone">🤖</div>
+        <h3>IA no processo de projeto</h3>
+        <p>Como ferramentas como Midjourney, DALL-E e Stable Diffusion já estão acelerando a etapa de concepção nos principais escritórios.</p>
+      </div>
+      <div class="topico-card">
+        <div class="icone">📐</div>
+        <h3>Do esboço ao render em minutos</h3>
+        <p>O fluxo de trabalho que transformou semanas em horas — e como adaptar isso ao seu escritório sem grandes investimentos.</p>
+      </div>
+      <div class="topico-card">
+        <div class="icone">💡</div>
+        <h3>IA e criatividade: aliadas ou rivais?</h3>
+        <p>A resposta sincera sobre o que a IA pode — e o que jamais substituirá no olhar do arquiteto.</p>
+      </div>
+      <div class="topico-card">
+        <div class="icone">🚀</div>
+        <h3>O futuro da profissão</h3>
+        <p>Quais habilidades vão definir os arquitetos que se destacarão na próxima década — e como se preparar agora.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     CTA FINAL
+══════════════════════════════════════ -->
+<section class="cta-final" id="assistir">
+  <div class="divisor"></div>
+  <h2>Pronto para <em>transformar</em> sua visão sobre arquitetura?</h2>
+  <p>Este podcast é gratuito, exclusivo e disponível apenas por tempo limitado. Assista agora.</p>
+  <a href="#" class="btn-primary" style="font-size:1.1rem; padding:20px 52px;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M8 5v14l11-7L8 5z" fill="currentColor"/>
+    </svg>
+    Assistir o podcast agora
+  </a>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     RODAPÉ
+══════════════════════════════════════ -->
+<footer>
+  <p>&copy; 2025 Renata Pocztaruk — Todos os direitos reservados.</p>
+</footer>
+
+</body>
+</html>
