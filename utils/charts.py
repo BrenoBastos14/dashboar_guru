@@ -234,6 +234,74 @@ def chart_receita_por_campo(df: pd.DataFrame, campo: str, titulo: str, top_n: in
     return fig
 
 
+def chart_topic_timeline(topics: list[dict], total_duration: float) -> go.Figure:
+    """Timeline horizontal dos clipes ao longo do vídeo.
+
+    Usa plotly.express.timeline com um eixo X baseado em offset (segundos
+    convertidos em datetime sintético, para que o px.timeline desenhe
+    corretamente os intervalos).
+    """
+    if not topics:
+        return _empty_chart("Nenhum clipe identificado ainda")
+
+    base = pd.Timestamp("1970-01-01")
+    rows = []
+    for i, t in enumerate(topics):
+        rows.append({
+            "title": f"{i+1:02d}. {t.get('title') or 'Clipe'}",
+            "start": base + pd.to_timedelta(float(t["start"]), unit="s"),
+            "end": base + pd.to_timedelta(float(t["end"]), unit="s"),
+            "duration_s": float(t["end"]) - float(t["start"]),
+            "summary": t.get("summary") or "",
+            "start_label": _fmt_hms(float(t["start"])),
+            "end_label": _fmt_hms(float(t["end"])),
+        })
+    df = pd.DataFrame(rows)
+
+    fig = px.timeline(
+        df,
+        x_start="start",
+        x_end="end",
+        y="title",
+        color="title",
+        color_discrete_sequence=COLORS_PRIMARY,
+        custom_data=["start_label", "end_label", "duration_s", "summary"],
+    )
+    fig.update_traces(
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "Início: %{customdata[0]}<br>"
+            "Fim: %{customdata[1]}<br>"
+            "Duração: %{customdata[2]:.0f}s<br>"
+            "%{customdata[3]}<extra></extra>"
+        ),
+    )
+    fig.update_yaxes(autorange="reversed")
+    last_end_sec = (df["end"].max() - base).total_seconds()
+    axis_end_sec = max(float(total_duration or 0.0), last_end_sec)
+    fig.update_xaxes(
+        tickformat="%H:%M:%S",
+        range=[base, base + pd.to_timedelta(axis_end_sec, unit="s")],
+    )
+    fig.update_layout(
+        title="Linha do tempo dos clipes",
+        showlegend=False,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(gridcolor="#E2E8F0"),
+        margin=dict(l=10, r=10, t=40, b=10),
+        height=max(220, 40 * len(topics) + 80),
+    )
+    return fig
+
+
+def _fmt_hms(seconds: float) -> str:
+    seconds = max(0, int(round(seconds)))
+    h, rem = divmod(seconds, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
 def _empty_chart(message: str) -> go.Figure:
     """Retorna um gráfico vazio com mensagem."""
     fig = go.Figure()

@@ -96,7 +96,326 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 # Tabs principais
 # ---------------------------------------------------------------------------
-tab_guru, tab_fb = st.tabs(["📊 Vendas Guru Manager", "📱 Facebook Ads"])
+tab_guru, tab_fb, tab_video = st.tabs([
+    "📊 Vendas Guru Manager",
+    "📱 Facebook Ads",
+    "🎬 Video Cutter",
+])
+
+# ===========================================================================
+# TAB 3 — Video Cutter (cortes automáticos por fala)
+# Renderizado antes das outras tabs para não ser bloqueado por st.stop()
+# do tab_guru/tab_fb quando não há upload de CSV.
+# ===========================================================================
+with tab_video:
+    import hashlib
+    import json as _json
+    import shutil as _shutil
+    import tempfile
+    from pathlib import Path as _Path
+
+    from utils.charts import chart_topic_timeline
+    from utils.clipper import build_output_zip, render_clips
+    from utils.topic_segmenter import segment_topics
+    from utils.transcription import (
+        transcribe_all,
+        transcript_to_srt,
+        transcript_to_vtt,
+    )
+    from utils.video import (
+        FFmpegError,
+        chunk_audio,
+        extract_audio,
+        probe_duration,
+    )
+
+    def _render_video_tab():
+        st.markdown("## 🎬 Video Cutter — Cortes por fala")
+        st.caption(
+            "Faça upload de um vídeo (até 2h) e a ferramenta transcreve a fala, "
+            "identifica tópicos e gera clipes curtos independentes. "
+            "Recomendação: vídeos acima de 500 MB podem estourar memória/disco do "
+            "servidor — exporte em 720p h264 antes."
+        )
+
+        # Gates de ambiente
+        _api_key = st.secrets.get("OPENAI_API_KEY") if hasattr(st, "secrets") else None
+        if not _api_key:
+            st.error(
+                "Configure **OPENAI_API_KEY** em Settings → Secrets (ou "
+                "`.streamlit/secrets.toml` local) para usar este recurso."
+            )
+            return
+        if _shutil.which("ffmpeg") is None:
+            st.error(
+                "ffmpeg não encontrado no servidor. "
+                "Confirme que o deploy instalou o pacote (nixpacks.toml)."
+            )
+            return
+
+        ss = st.session_state
+        ss.setdefault("vc_workdir", None)
+        ss.setdefault("vc_video_hash", None)
+        ss.setdefault("vc_video_path", None)
+        ss.setdefault("vc_duration", 0.0)
+        ss.setdefault("vc_transcript", None)
+        ss.setdefault("vc_topics", None)
+        ss.setdefault("vc_outputs", None)
+        ss.setdefault("vc_done", False)
+
+        uploaded_video = st.file_uploader(
+            "Vídeo (mp4, mov, mkv, webm)",
+            type=["mp4", "mov", "mkv", "webm"],
+            key="vc_upload",
+        )
+
+        col_a, col_b, col_c, col_d = st.columns(4)
+        with col_a:
+            lang = st.selectbox(
+                "Idioma da fala",
+                options=["auto", "pt", "en", "es"],
+                index=1,
+                help="'auto' deixa o Whisper detectar.",
+            )
+        with col_b:
+            min_clip = st.slider("Clip mín (s)", 15, 300, 30, step=5)
+        with col_c:
+            max_clip = st.slider("Clip máx (s)", 60, 600, 180, step=15)
+        with col_d:
+            target_n = st.slider("Nº alvo de clipes", 0, 20, 0, help="0 = sem alvo")
+
+        if uploaded_video is not None:
+            size_mb = uploaded_video.size / (1024 * 1024)
+            with st.expander("🔍 Diagnóstico — arquivo e estimativa de custo", expanded=False):
+                st.write(f"**Arquivo:** {uploaded_video.name} · {size_mb:,.1f} MB")
+                st.caption(
+                    "Estimativa só é precisa após a extração do áudio (próximo passo). "
+                    "Whisper API: ~US$ 0.006/min. LLM de segmentação: ~US$ 0.02–0.10 por vídeo."
+                )
+
+        go = st.button(
+            "🚀 Processar vídeo",
+            type="primary",
+            disabled=uploaded_video is None,
+            use_container_width=True,
+        )
+
+        if go and uploaded_video is not None:
+            try:
+                raw = uploaded_video.getvalue()
+                video_hash = hashlib.md5(raw).hexdigest()[:12]
+
+                if ss["vc_video_hash"] != video_hash:
+                    old = ss.get("vc_workdir")
+                    if old and _Path(old).exists():
+                        _shutil.rmtree(old, ignore_errors=True)
+                    ss["vc_workdir"] = tempfile.mkdtemp(prefix="vc_")
+                    ss["vc_video_hash"] = video_hash
+                    ss["vc_transcript"] = None
+                    ss["vc_topics"] = None
+                    ss["vc_outputs"] = None
+                    ss["vc_done"] = False
+
+                workdir = _Path(ss["vc_workdir"])
+                video_path = workdir / f"source_{video_hash}{_Path(uploaded_video.name).suffix}"
+
+                if not video_path.exists():
+                    with open(video_path, "wb") as f:
+                        f.write(raw)
+                ss["vc_video_path"] = str(video_path)
+
+                with st.status("Processando vídeo…", expanded=True) as status:
+                    st.write("🕒 Lendo duração do vídeo…")
+                    duration = probe_duration(str(video_path))
+                    ss["vc_duration"] = duration
+                    st.write(f"   Duração: **{duration/60:.1f} min**.")
+
+                    audio_path = workdir / "audio.mp3"
+                    if not audio_path.exists():
+                        st.write("🎧 Extraindo áudio (mp3 mono 16 kHz)…")
+                        extract_audio(str(video_path), str(audio_path))
+
+                    chunks_dir = workdir / "chunks"
+                    chunks_dir.mkdir(exist_ok=True)
+                    existing_chunks = sorted(chunks_dir.glob("chunk_*.mp3"))
+                    if not existing_chunks:
+                        st.write("✂️ Dividindo áudio em pedaços de 10 min…")
+                        chunks_meta = chunk_audio(str(audio_path), str(chunks_dir))
+                    else:
+                        chunks_meta = []
+                        offset = 0.0
+                        for p in existing_chunks:
+                            dur = probe_duration(str(p))
+                            chunks_meta.append({
+                                "path": str(p),
+                                "start_offset": offset,
+                                "duration": dur,
+                            })
+                            offset += dur
+                    st.write(f"   {len(chunks_meta)} pedaço(s) de áudio.")
+
+                    if ss["vc_transcript"] is None:
+                        st.write("🗣️ Transcrevendo via Whisper API…")
+                        progress_trans = st.progress(0.0, text="0 / ?")
+
+                        def _cb(i, n):
+                            progress_trans.progress(i / max(n, 1), text=f"{i} / {n}")
+
+                        transcript = transcribe_all(
+                            chunks_meta,
+                            api_key=_api_key,
+                            language=lang if lang != "auto" else None,
+                            progress_cb=_cb,
+                        )
+                        transcript["duration"] = transcript.get("duration") or duration
+                        ss["vc_transcript"] = transcript
+                    else:
+                        st.write("🗣️ Transcrição reutilizada do processamento anterior.")
+                    transcript = ss["vc_transcript"]
+                    st.write(f"   {len(transcript.get('segments') or [])} segmentos transcritos.")
+
+                    st.write("🧠 Identificando tópicos e clipes…")
+                    topics = segment_topics(
+                        transcript,
+                        api_key=_api_key,
+                        min_clip_sec=min_clip,
+                        max_clip_sec=max_clip,
+                        target_n=target_n or None,
+                    )
+                    if not topics:
+                        status.update(label="Nenhum clipe identificado", state="error")
+                        st.warning(
+                            "O LLM não identificou clipes viáveis. Tente reduzir o "
+                            "tamanho mínimo ou usar um vídeo com fala mais estruturada."
+                        )
+                        return
+                    ss["vc_topics"] = topics
+                    st.write(f"   {len(topics)} clipe(s) definido(s).")
+
+                    st.write("🎞️ Renderizando clipes (ffmpeg)…")
+                    progress_render = st.progress(0.0, text=f"0 / {len(topics)}")
+
+                    def _cb2(i, n):
+                        progress_render.progress(i / max(n, 1), text=f"{i} / {n}")
+
+                    clips_dir = workdir / "clips"
+                    if clips_dir.exists():
+                        _shutil.rmtree(clips_dir)
+                    render = render_clips(
+                        str(video_path), topics, str(clips_dir), progress_cb=_cb2,
+                    )
+
+                    st.write("📦 Gerando SRT/VTT e zip…")
+                    srt_text = transcript_to_srt(transcript)
+                    vtt_text = transcript_to_vtt(transcript)
+                    chapters_json = _json.dumps(
+                        {
+                            "video": uploaded_video.name,
+                            "duration": duration,
+                            "language": transcript.get("language"),
+                            "topics": topics,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    zip_path = workdir / "outputs.zip"
+                    build_output_zip(
+                        str(zip_path),
+                        render["clips"],
+                        render["final"],
+                        srt_text,
+                        vtt_text,
+                        chapters_json,
+                    )
+
+                    ss["vc_outputs"] = {
+                        "clips": render["clips"],
+                        "final": render["final"],
+                        "srt": srt_text,
+                        "vtt": vtt_text,
+                        "chapters_json": chapters_json,
+                        "zip": str(zip_path),
+                    }
+                    ss["vc_done"] = True
+                    status.update(label="✅ Vídeo processado", state="complete")
+
+            except FFmpegError as e:
+                st.error(f"Falha no ffmpeg: {e}")
+            except Exception as e:
+                st.error(f"Erro ao processar o vídeo: {e}")
+                st.code(traceback.format_exc(), language="python")
+
+        if ss.get("vc_done") and ss.get("vc_topics"):
+            topics = ss["vc_topics"]
+            outputs = ss["vc_outputs"]
+            st.divider()
+            st.subheader(f"Resultados · {len(topics)} clipe(s)")
+
+            st.plotly_chart(
+                chart_topic_timeline(topics, ss.get("vc_duration") or 0.0),
+                use_container_width=True,
+            )
+
+            for i, t in enumerate(topics):
+                with st.expander(
+                    f"**{i+1:02d}. {t['title']}** · {t['end']-t['start']:.0f}s "
+                    f"({int(t['start']//60):02d}:{int(t['start']%60):02d} → "
+                    f"{int(t['end']//60):02d}:{int(t['end']%60):02d})",
+                    expanded=False,
+                ):
+                    if t.get("summary"):
+                        st.write(t["summary"])
+                    clip_path = outputs["clips"][i] if i < len(outputs["clips"]) else None
+                    if clip_path and _Path(clip_path).exists():
+                        st.video(clip_path)
+                        with open(clip_path, "rb") as f:
+                            st.download_button(
+                                f"⬇️ Baixar clipe {i+1}",
+                                data=f.read(),
+                                file_name=_Path(clip_path).name,
+                                mime="video/mp4",
+                                key=f"dl_clip_{i}",
+                            )
+
+            st.divider()
+            d1, d2, d3, d4, d5 = st.columns(5)
+            if outputs.get("final") and _Path(outputs["final"]).exists():
+                with open(outputs["final"], "rb") as f:
+                    d1.download_button(
+                        "🎬 Vídeo final",
+                        data=f.read(),
+                        file_name="final.mp4",
+                        mime="video/mp4",
+                    )
+            d2.download_button(
+                "📝 SRT",
+                data=outputs["srt"],
+                file_name="transcript.srt",
+                mime="text/plain",
+            )
+            d3.download_button(
+                "📝 VTT",
+                data=outputs["vtt"],
+                file_name="transcript.vtt",
+                mime="text/vtt",
+            )
+            d4.download_button(
+                "🗂️ chapters.json",
+                data=outputs["chapters_json"],
+                file_name="chapters.json",
+                mime="application/json",
+            )
+            if outputs.get("zip") and _Path(outputs["zip"]).exists():
+                with open(outputs["zip"], "rb") as f:
+                    d5.download_button(
+                        "📦 Tudo (zip)",
+                        data=f.read(),
+                        file_name="video_cutter_outputs.zip",
+                        mime="application/zip",
+                    )
+
+    _render_video_tab()
+
 
 # ===========================================================================
 # TAB 1 — Guru Manager
