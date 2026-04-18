@@ -14,12 +14,14 @@ from openai import OpenAI
 
 
 SYSTEM_PROMPT = (
-    "Você é um editor de vídeo que assiste à transcrição de uma aula, podcast ou "
-    "palestra longa e decide onde estão os melhores momentos para virar clipes "
-    "curtos independentes (highlights/shorts). "
-    "Você recebe os trechos numerados com timestamps. Agrupe-os em capítulos "
-    "coerentes — cada capítulo é um clipe autocontido, começando e terminando "
-    "em trechos existentes. "
+    "Você é um editor de vídeo sênior que assiste à transcrição de uma aula, "
+    "podcast ou palestra longa e SELECIONA apenas os melhores momentos para "
+    "virar clipes curtos e impactantes (highlights/shorts). "
+    "Seja criterioso: escolha somente trechos que funcionam sozinhos — "
+    "afirmações fortes, insights, histórias completas, momentos com punch. "
+    "IGNORE: introduções genéricas, digressões, repetições, trechos sem "
+    "contexto ou sem payoff. Prefira qualidade sobre quantidade. "
+    "Cada clipe é autocontido, começando e terminando em trechos existentes. "
     "Responda SEMPRE em JSON válido no formato: "
     '{"chapters": [{"title": "...", "summary": "...", '
     '"start_idx": N, "end_idx": M}]} '
@@ -49,13 +51,18 @@ def _build_user_prompt(
             f"[{seg['id']}] {_mmss(seg['start'])}-{_mmss(seg['end'])}: {seg['text']}"
         )
     guidance = (
-        f"Cada clipe deve ter entre {min_clip_sec}s e {max_clip_sec}s. "
+        f"REGRAS OBRIGATÓRIAS:\n"
+        f"- Cada clipe deve ter NO MÁXIMO {max_clip_sec}s (2 minutos).\n"
+        f"- Cada clipe deve ter NO MÍNIMO {min_clip_sec}s.\n"
+        f"- Selecione APENAS os trechos que ficariam bem como cortes "
+        f"independentes — não precisa cobrir o vídeo inteiro.\n"
+        f"- Prefira 3-8 clipes excelentes a 20 clipes medíocres.\n"
     )
     if target_n:
-        guidance += f"Tente produzir cerca de {target_n} clipes. "
+        guidance += f"- Tente produzir cerca de {target_n} clipes.\n"
     guidance += (
-        "Preserve trechos curtos e impactantes em vez de longos sem foco. "
-        "Títulos curtos (até 8 palavras). Summary de 1 frase."
+        "- Títulos curtos (até 8 palavras), chamativos.\n"
+        "- Summary de 1 frase explicando o porquê do corte."
     )
     return guidance + "\n\nTranscrição:\n" + "\n".join(lines)
 

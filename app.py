@@ -169,20 +169,17 @@ with tab_video:
             key="vc_upload",
         )
 
-        col_a, col_b, col_c, col_d = st.columns(4)
-        with col_a:
-            lang = st.selectbox(
-                "Idioma da fala",
-                options=["auto", "pt", "en", "es"],
-                index=1,
-                help="'auto' deixa o Whisper detectar.",
-            )
-        with col_b:
-            min_clip = st.slider("Clip mín (s)", 15, 300, 30, step=5)
-        with col_c:
-            max_clip = st.slider("Clip máx (s)", 60, 600, 180, step=15)
-        with col_d:
-            target_n = st.slider("Nº alvo de clipes", 0, 20, 0, help="0 = sem alvo")
+        lang = st.selectbox(
+            "Idioma da fala",
+            options=["auto", "pt", "en", "es"],
+            index=1,
+            help="'auto' deixa o Whisper detectar.",
+        )
+
+        # Constantes fixas: clipes de 20s a 120s (2 min), sem alvo.
+        min_clip = 20
+        max_clip = 120
+        target_n = 0
 
         if uploaded_video is not None:
             size_mb = uploaded_video.size / (1024 * 1024)
