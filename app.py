@@ -122,6 +122,7 @@ with tab_video:
         transcript_to_srt,
         transcript_to_vtt,
     )
+    from utils.vertical import render_vertical_batch
     from utils.video import (
         FFmpegError,
         chunk_audio,
@@ -162,6 +163,7 @@ with tab_video:
         ss.setdefault("vc_topics", None)
         ss.setdefault("vc_outputs", None)
         ss.setdefault("vc_done", False)
+        ss.setdefault("vc_vertical", None)
 
         uploaded_video = st.file_uploader(
             "Vídeo (mp4, mov, mkv, webm)",
@@ -410,6 +412,83 @@ with tab_video:
                         file_name="video_cutter_outputs.zip",
                         mime="application/zip",
                     )
+
+            st.divider()
+            st.subheader("📱 Versão vertical 9:16 (reels/shorts)")
+            st.caption(
+                "Transforma cada clipe 16:9 em 1080x1920 com detecção de rosto. "
+                "**auto**: decide o layout por clipe. "
+                "**side_by_side**: rosto em cima, slides embaixo. "
+                "**pip**: rosto em cima (quadrado), frame inteiro embaixo. "
+                "**face_only**: apenas o rosto, crop vertical."
+            )
+            v1, v2 = st.columns([1, 3])
+            layout_choice = v1.selectbox(
+                "Layout",
+                ["auto", "side_by_side", "pip", "face_only"],
+                index=0,
+                key="vc_layout_choice",
+            )
+            go_vertical = v2.button(
+                "📱 Gerar versões verticais 9:16",
+                type="primary",
+                use_container_width=True,
+                key="vc_go_vertical",
+            )
+
+            if go_vertical:
+                workdir = ss["vc_workdir"]
+                clips = [p for p in outputs["clips"] if p and _Path(p).exists()]
+                if not clips:
+                    st.warning("Nenhum clipe disponível para converter.")
+                else:
+                    vdir = _Path(workdir) / "vertical"
+                    vdir.mkdir(parents=True, exist_ok=True)
+                    prog = st.progress(0.0, text="Renderizando vertical...")
+                    try:
+                        def _cb(i, n):
+                            pct = i / max(1, n)
+                            prog.progress(
+                                min(1.0, pct),
+                                text=f"Renderizando vertical {i}/{n}...",
+                            )
+                        vres = render_vertical_batch(
+                            clips, str(vdir), layout_choice, progress_cb=_cb
+                        )
+                        prog.progress(1.0, text="Concluído.")
+                        ss["vc_vertical"] = vres
+                    except Exception as e:
+                        st.error(f"Falha ao gerar verticais: {e}")
+                        st.code(traceback.format_exc(), language="python")
+
+            vres = ss.get("vc_vertical")
+            if vres:
+                ok = [r for r in vres if r.get("path")]
+                fail = [r for r in vres if not r.get("path")]
+                msg = f"{len(ok)} vertical(is) gerado(s)"
+                if fail:
+                    msg += f" · {len(fail)} falha(s)"
+                st.success(msg)
+                for i, r in enumerate(vres):
+                    title = topics[i]["title"] if i < len(topics) else f"Clipe {i+1}"
+                    with st.expander(
+                        f"📱 **{i+1:02d}. {title}** · layout: {r.get('layout')}",
+                        expanded=False,
+                    ):
+                        if r.get("error"):
+                            st.error(r["error"])
+                            continue
+                        p = r.get("path")
+                        if p and _Path(p).exists():
+                            st.video(p)
+                            with open(p, "rb") as f:
+                                st.download_button(
+                                    f"⬇️ Baixar vertical {i+1}",
+                                    data=f.read(),
+                                    file_name=_Path(p).name,
+                                    mime="video/mp4",
+                                    key=f"dl_vert_{i}",
+                                )
 
     _render_video_tab()
 

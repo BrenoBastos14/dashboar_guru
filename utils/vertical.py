@@ -1,0 +1,247 @@
+"""Conversão de clipes horizontais (16:9) em vertical 9:16 para reels/shorts.
+
+Detecta o rosto com mediapipe (tira uma média de amostras no clipe), decide
+o layout e compõe o output 1080x1920 via filtros ffmpeg:
+- side_by_side: top = metade com a face; bottom = metade com os slides
+- pip: top = crop quadrado ao redor da face; bottom = frame inteiro
+- face_only: crop vertical 9:16 centrado na face
+"""
+
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+from typing import Callable, Literal, Optional
+
+import cv2
+import mediapipe as mp
+import numpy as np
+
+
+OUT_W = 1080
+OUT_H = 1920
+HALF_H = OUT_H // 2  # 960
+
+Layout = Literal["auto", "side_by_side", "pip", "face_only"]
+
+
+def _detect_face_average(video_path: str, samples: int = 20) -> Optional[tuple[float, float, float, float]]:
+    """Amostra ~N frames e devolve o rosto médio em coords relativas [0,1].
+
+    Retorna (cx, cy, w, h) ou None se nenhum rosto foi detectado.
+    """
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return None
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if total <= 0:
+        cap.release()
+        return None
+
+    step = max(1, total // samples)
+    detector = mp.solutions.face_detection.FaceDetection(
+        model_selection=1, min_detection_confidence=0.5
+    )
+
+    centers: list[tuple[float, float]] = []
+    sizes: list[tuple[float, float]] = []
+    try:
+        frame_idx = 0
+        while frame_idx < total and len(centers) < samples:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, frame = cap.read()
+            if not ret:
+                break
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            res = detector.process(rgb)
+            if res.detections:
+                best = max(
+                    res.detections,
+                    key=lambda d: d.location_data.relative_bounding_box.width
+                    * d.location_data.relative_bounding_box.height,
+                )
+                box = best.location_data.relative_bounding_box
+                centers.append((box.xmin + box.width / 2, box.ymin + box.height / 2))
+                sizes.append((box.width, box.height))
+            frame_idx += step
+    finally:
+        cap.release()
+        detector.close()
+
+    if not centers:
+        return None
+    cx = float(np.mean([c[0] for c in centers]))
+    cy = float(np.mean([c[1] for c in centers]))
+    bw = float(np.mean([s[0] for s in sizes]))
+    bh = float(np.mean([s[1] for s in sizes]))
+    return (cx, cy, bw, bh)
+
+
+def _probe_size(video_path: str) -> tuple[int, int]:
+    cap = cv2.VideoCapture(video_path)
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()
+    return w, h
+
+
+def _even(n: int) -> int:
+    return n - (n % 2)
+
+
+def _auto_layout(face: Optional[tuple[float, float, float, float]]) -> Layout:
+    if face is None:
+        return "face_only"
+    _, _, fw, _ = face
+    fx = face[0]
+    # Face pequena (< 15% da largura) → provavelmente PiP
+    if fw < 0.15:
+        return "pip"
+    # Face deslocada pra um dos lados → side_by_side
+    if abs(fx - 0.5) > 0.12:
+        return "side_by_side"
+    return "face_only"
+
+
+def _run_ffmpeg(cmd: list[str]) -> None:
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"ffmpeg falhou: {' '.join(cmd[:3])}...\nstderr:\n{e.stderr[-1500:]}"
+        ) from e
+
+
+def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
+    face_left = face is None or face[0] < 0.5
+    half_w = _even(sw // 2)
+    if face_left:
+        face_x, slide_x = 0, half_w
+    else:
+        face_x, slide_x = half_w, 0
+
+    # Cada metade (half_w x sh) vai virar 1080x960.
+    # Escala pela largura 1080 e corta/pad vertical para bater 960.
+    filter_complex = (
+        f"[0:v]crop={half_w}:{sh}:{face_x}:0,"
+        f"scale=1080:-2,crop=1080:960[top];"
+        f"[0:v]crop={half_w}:{sh}:{slide_x}:0,"
+        f"scale=1080:-2,crop=1080:960[bottom];"
+        f"[top][bottom]vstack=inputs=2[out]"
+    )
+    _run_ffmpeg([
+        "ffmpeg", "-y", "-i", src,
+        "-filter_complex", filter_complex,
+        "-map", "[out]", "-map", "0:a?",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        out,
+    ])
+    return out
+
+
+def _render_pip(src: str, out: str, face, sw: int, sh: int) -> str:
+    if face is None:
+        return _render_face_only(src, out, face, sw, sh)
+    fcx = face[0] * sw
+    fcy = face[1] * sh
+    # Expand ~2x a bbox para dar respiro, quadrado.
+    side = int(max(face[2] * sw, face[3] * sh) * 2.2)
+    side = max(side, 240)
+    side = min(side, min(sw, sh))
+    side = _even(side)
+    x0 = _even(int(max(0, min(sw - side, fcx - side / 2))))
+    y0 = _even(int(max(0, min(sh - side, fcy - side / 2))))
+
+    filter_complex = (
+        f"[0:v]crop={side}:{side}:{x0}:{y0},scale=1080:960[top];"
+        f"[0:v]scale=1080:-2,"
+        f"pad=1080:960:0:(960-ih)/2:color=black,crop=1080:960[bottom];"
+        f"[top][bottom]vstack=inputs=2[out]"
+    )
+    _run_ffmpeg([
+        "ffmpeg", "-y", "-i", src,
+        "-filter_complex", filter_complex,
+        "-map", "[out]", "-map", "0:a?",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        out,
+    ])
+    return out
+
+
+def _render_face_only(src: str, out: str, face, sw: int, sh: int) -> str:
+    # Corta vertical 9:16 do source.
+    crop_w = _even(int(sh * 9 / 16))
+    crop_w = min(crop_w, sw)
+    fcx = (face[0] * sw) if face else (sw / 2)
+    x0 = _even(int(max(0, min(sw - crop_w, fcx - crop_w / 2))))
+
+    filter_complex = (
+        f"[0:v]crop={crop_w}:{sh}:{x0}:0,scale=1080:1920[out]"
+    )
+    _run_ffmpeg([
+        "ffmpeg", "-y", "-i", src,
+        "-filter_complex", filter_complex,
+        "-map", "[out]", "-map", "0:a?",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        out,
+    ])
+    return out
+
+
+def render_vertical(
+    src_clip: str,
+    out_path: str,
+    layout: Layout = "auto",
+) -> tuple[str, Layout]:
+    """Renderiza 1080x1920 de um clipe 16:9. Retorna (path, layout_usado)."""
+    src_clip = str(src_clip)
+    out_path = str(out_path)
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+
+    sw, sh = _probe_size(src_clip)
+    if sw == 0 or sh == 0:
+        raise RuntimeError(f"Não consegui ler dimensões de {src_clip}")
+
+    face = _detect_face_average(src_clip)
+    chosen = _auto_layout(face) if layout == "auto" else layout
+
+    if chosen == "side_by_side":
+        _render_side_by_side(src_clip, out_path, face, sw, sh)
+    elif chosen == "pip":
+        _render_pip(src_clip, out_path, face, sw, sh)
+    else:
+        _render_face_only(src_clip, out_path, face, sw, sh)
+
+    return out_path, chosen
+
+
+def render_vertical_batch(
+    clip_paths: list[str],
+    out_dir: str,
+    layout: Layout = "auto",
+    progress_cb: Optional[Callable[[int, int], None]] = None,
+) -> list[dict]:
+    """Processa vários clipes. Retorna lista de {path, layout, source}."""
+    out_dir_p = Path(out_dir)
+    out_dir_p.mkdir(parents=True, exist_ok=True)
+    results = []
+    total = len(clip_paths)
+    for i, src in enumerate(clip_paths):
+        if progress_cb:
+            progress_cb(i, total)
+        name = Path(src).stem + "_vertical.mp4"
+        out = out_dir_p / name
+        try:
+            path, used = render_vertical(src, str(out), layout)
+            results.append({"path": path, "layout": used, "source": src})
+        except Exception as e:
+            results.append({"path": None, "layout": layout, "source": src, "error": str(e)})
+    if progress_cb:
+        progress_cb(total, total)
+    return results
