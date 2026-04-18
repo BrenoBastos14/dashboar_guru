@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Super Combo — ARQEXPRESS × ARQCHECK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  :root {
+    --ink: #0E0E10;
+    --ink-2: #17171A;
+    --ink-3: #1F1F23;
+    --line: #2A2A30;
+    --cream: #F4EEDE;
+    --cream-2: #E8E0CB;
+    --paper: #FAF6EB;
+    --text: #F4EEDE;
+    --text-dim: #A8A49A;
+    --text-mute: #6E6B63;
+
+    /* Guide palette — pulled from the bundle */
+    --g-burgundy: #7A1F2B;
+    --g-black:   #111111;
+    --g-teal:    #1FB3B3;
+    --g-forest:  #0F6B3E;
+    --g-lime:    #B6D84E;
+    --g-mustard: #E8B81B;
+    --g-orange:  #E8591C;
+    --g-hotpink: #D91A6A;
+    --g-navy:    #0E2A5C;
+    --g-violet:  #5A3AA8;
+    --g-sage:    #9BA08C;
+    --g-red:     #C8222A;
+
+    --radius: 14px;
+    --radius-lg: 22px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--ink);
+    color: var(--text);
+    font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  body.cream {
+    background: var(--cream);
+    color: var(--ink);
+  }
+  body.cream { --text: var(--ink); --text-dim: #5A564D; --line: #D8D0BA; --ink-2: #EBE4CF; --ink-3: #DFD7BE; }
+
+  .serif { font-family: "Instrument Serif", serif; font-weight: 400; letter-spacing: -0.01em; }
+  .mono  { font-family: "Geist Mono", ui-monospace, monospace; font-weight: 400; }
+
+  .container { max-width: 1360px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .container { padding: 0 20px; } }
+
+  /* --- NAV --- */
+  .nav {
+    position: sticky; top: 0; z-index: 40;
+    backdrop-filter: blur(14px);
+    background: color-mix(in oklab, var(--ink) 72%, transparent);
+    border-bottom: 1px solid var(--line);
+  }
+  body.cream .nav { background: color-mix(in oklab, var(--cream) 78%, transparent); }
+  .nav-row { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.01em; }
+  .brand-mark {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: conic-gradient(from 90deg, var(--g-burgundy), var(--g-orange), var(--g-mustard), var(--g-forest), var(--g-teal), var(--g-navy), var(--g-hotpink), var(--g-burgundy));
+    position: relative;
+  }
+  .brand-mark::after {
+    content: ""; position: absolute; inset: 6px; border-radius: 3px; background: var(--ink);
+  }
+  body.cream .brand-mark::after { background: var(--cream); }
+  .nav-links { display: flex; gap: 28px; font-size: 14px; color: var(--text-dim); }
+  .nav-links a { color: inherit; text-decoration: none; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    font-size: 13px; padding: 9px 14px; border-radius: 999px;
+    background: var(--text); color: var(--ink);
+    text-decoration: none; font-weight: 500;
+    border: 1px solid var(--text);
+  }
+  @media (max-width: 860px) { .nav-links { display: none; } }
+
+  /* --- HERO --- */
+  .hero { position: relative; padding: 56px 0 40px; overflow: hidden; }
+  .hero-grid {
+    display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center;
+  }
+  @media (max-width: 980px) { .hero-grid { grid-template-columns: 1fr; gap: 24px; } }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--g-teal); box-shadow: 0 0 0 4px color-mix(in oklab, var(--g-teal) 25%, transparent); }
+
+  h1.display {
+    font-size: clamp(52px, 7.4vw, 104px);
+    line-height: 0.94; letter-spacing: -0.025em;
+    margin: 22px 0 18px;
+    font-family: "Instrument Serif", serif; font-weight: 400;
+  }
+  h1.display em { font-style: italic; color: var(--g-mustard); }
+  h1.display .amp { font-style: italic; color: var(--text-dim); }
+  h1.display .stack { display: block; }
+  h1.display .under { 
+    background: linear-gradient(transparent 62%, color-mix(in oklab, var(--g-hotpink) 55%, transparent) 62%);
+    padding: 0 4px;
+  }
+
+  .lead {
+    font-size: 19px; line-height: 1.5; max-width: 540px; color: var(--text-dim);
+  }
+  body.cream .lead { color: #4A4740; }
+
+  .cta-row { display: flex; gap: 12px; align-items: center; margin-top: 28px; flex-wrap: wrap; }
+  .btn {
+    font: inherit; font-weight: 500; font-size: 15px;
+    padding: 14px 22px; border-radius: 999px; border: 0;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 10px;
+    cursor: pointer; transition: transform .15s ease, background .2s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--text); color: var(--ink); }
+  .btn-primary:hover { background: var(--g-mustard); }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .btn-ghost:hover { border-color: var(--text); }
+
+  .badges { display: flex; gap: 18px; margin-top: 26px; color: var(--text-dim); font-size: 13px; flex-wrap: wrap; }
+  .badge { display: inline-flex; gap: 8px; align-items: center; }
+  .badge svg { flex: none; }
+
+  /* Hero right — stacked bundle */
+  .bundle {
+    position: relative; aspect-ratio: 1/1; width: 100%;
+    perspective: 1600px;
+  }
+  .guide {
+    position: absolute;
+    border-radius: 4px 10px 10px 4px;
+    box-shadow: -14px 18px 40px rgba(0,0,0,.45), inset 2px 0 0 rgba(255,255,255,.08), inset -1px 0 0 rgba(0,0,0,.25);
+    overflow: hidden;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 14px 12px 14px 18px;
+    color: #fff;
+    transition: transform .4s cubic-bezier(.2,.8,.2,1);
+  }
+  .guide::before {
+    content: ""; position: absolute; left: 6px; top: 0; bottom: 0; width: 2px;
+    background: rgba(0,0,0,.35);
+  }
+  .guide::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(100deg, rgba(255,255,255,.06) 0%, transparent 30%, transparent 70%, rgba(0,0,0,.18) 100%);
+  }
+  .guide .g-meta { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; opacity: .8; }
+  .guide .g-title {
+    font-family: "Instrument Serif", serif; font-size: 28px; line-height: 0.95;
+    letter-spacing: -0.01em; text-transform: uppercase; font-weight: 400;
+    max-width: 85%;
+  }
+  .guide .g-logo {
+    font-size: 9px; letter-spacing: 0.2em; font-weight: 600; text-transform: uppercase;
+  }
+  .guide .g-check {
+    width: 14px; height: 14px; border: 1px solid currentColor; border-radius: 3px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .guide .g-top { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+
+  /* Positions — a stacked arrangement */
+  .g1 { inset: 6% 4% 22% 30%; background: var(--g-burgundy); transform: rotate(-6deg); }
+  .g2 { inset: 14% 18% 14% 18%; background: var(--g-black); transform: rotate(2deg); }
+  .g3 { inset: 28% 36% 2% 6%; background: var(--g-teal); transform: rotate(-10deg); }
+  .g4 { inset: 30% 22% 6% 22%; background: var(--g-forest); transform: rotate(-2deg); }
+  .g5 { inset: 32% 6% 8% 38%; background: var(--g-mustard); color: #1a1600; transform: rotate(6deg); }
+  .g6 { inset: 48% 46% -8% 2%; background: var(--g-hotpink); transform: rotate(-14deg); }
+  .g7 { inset: 50% 30% -6% 18%; background: var(--g-orange); transform: rotate(-4deg); }
+  .g8 { inset: 52% 14% -4% 32%; background: var(--g-violet); transform: rotate(3deg); }
+  .g9 { inset: 54% -2% -2% 48%; background: var(--g-navy); transform: rotate(10deg); }
+
+  .bundle:hover .g1 { transform: rotate(-9deg) translate(-8px,-6px); }
+  .bundle:hover .g3 { transform: rotate(-13deg) translate(-10px, 4px); }
+  .bundle:hover .g6 { transform: rotate(-18deg) translate(-8px, 6px); }
+  .bundle:hover .g9 { transform: rotate(14deg) translate(8px, 4px); }
+
+  /* Phone with ARQCHECK */
+  .phone {
+    position: absolute; right: -4%; bottom: -4%;
+    width: 46%; aspect-ratio: 9/19;
+    background: #0a0a0b; border-radius: 34px;
+    padding: 10px;
+    box-shadow: 0 30px 60px rgba(0,0,0,.55), inset 0 0 0 1.5px #2a2a2e;
+    transform: rotate(14deg);
+  }
+  .phone-screen {
+    width: 100%; height: 100%; background: #fff; border-radius: 26px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 10px;
+    color: var(--ink);
+    position: relative;
+    overflow: hidden;
+  }
+  .phone-screen .arqlogo {
+    font-family: "Geist", sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.03em;
+    display: flex; align-items: baseline;
+  }
+  .phone-screen .arqlogo .ck { color: #111; }
+  .phone-screen .arqlogo .arq { color: #111; }
+  .phone-notch {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    width: 28%; height: 18px; background: #0a0a0b; border-radius: 12px;
+  }
+
+  /* --- TICKER --- */
+  .ticker {
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    overflow: hidden; padding: 22px 0;
+    background: var(--ink);
+  }
+  body.cream .ticker { background: var(--cream); }
+  .ticker-track {
+    display: flex; gap: 56px; white-space: nowrap;
+    animation: tick 38s linear infinite;
+    font-family: "Instrument Serif", serif; font-size: 32px;
+    color: var(--text); font-style: italic;
+    align-items: center;
+  }
+  .ticker-track span.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--g-orange); display: inline-block; flex: none; }
+  @keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* --- SECTIONS --- */
+  section.block { padding: 96px 0; border-bottom: 1px solid var(--line); }
+  @media (max-width: 720px) { section.block { padding: 64px 0; } }
+
+  .sec-head { display: grid; grid-template-columns: 1fr 1.4fr; gap: 48px; margin-bottom: 48px; align-items: end; }
+  @media (max-width: 900px) { .sec-head { grid-template-columns: 1fr; gap: 12px; } }
+  .sec-num { font-family: "Geist Mono", monospace; font-size: 12px; letter-spacing: 0.12em; color: var(--text-mute); }
+  .sec-title { font-family: "Instrument Serif", serif; font-size: clamp(40px, 5vw, 68px); line-height: 1; letter-spacing: -0.02em; margin: 10px 0 0; }
+  .sec-title em { color: var(--g-mustard); font-style: italic; }
+  .sec-sub { color: var(--text-dim); max-width: 620px; font-size: 17px; line-height: 1.5; }
+
+  /* Included grid */
+  .inc-grid {
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px;
+  }
+  .inc {
+    position: relative;
+    aspect-ratio: 3/4;
+    border-radius: 4px 10px 10px 4px;
+    padding: 16px 14px 18px 22px;
+    color: #fff;
+    display: flex; flex-direction: column; justify-content: space-between;
+    box-shadow: -6px 10px 24px rgba(0,0,0,.35), inset 2px 0 0 rgba(255,255,255,.06);
+    overflow: hidden;
+    transition: transform .25s ease;
+    cursor: default;
+  }
+  .inc::before {
+    content:""; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px;
+    background: rgba(0,0,0,.35);
+  }
+  .inc:hover { transform: translateY(-6px) rotate(-1deg); }
+  .inc .num { font: 500 10px/1 "Geist Mono", monospace; letter-spacing: 0.2em; opacity: .7; }
+  .inc .title {
+    font-family: "Instrument Serif", serif; font-size: 26px; line-height: 0.95;
+    letter-spacing: -0.01em; text-transform: uppercase;
+  }
+  .inc .foot { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; opacity: .85; display: flex; justify-content: space-between; }
+  .inc.span-3 { grid-column: span 3; }
+  .inc.span-4 { grid-column: span 4; }
+  .inc.span-6 { grid-column: span 6; }
+  @media (max-width: 1100px) { .inc.span-3, .inc.span-4, .inc.span-6 { grid-column: span 4; } }
+  @media (max-width: 720px) { .inc.span-3, .inc.span-4, .inc.span-6 { grid-column: span 6; } }
+
+  /* ARQCHECK panel */
+  .arq-split {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+  }
+  @media (max-width: 980px) { .arq-split { grid-template-columns: 1fr; } }
+  .arq-copy h3 {
+    font-family: "Instrument Serif", serif; font-size: clamp(36px, 4.6vw, 58px); line-height: 1; letter-spacing: -0.02em; margin: 12px 0 16px;
+  }
+  .arq-features { display: grid; gap: 16px; margin-top: 24px; }
+  .arq-feat { display: grid; grid-template-columns: 28px 1fr; gap: 14px; padding: 16px 0; border-top: 1px solid var(--line); }
+  .arq-feat:last-child { border-bottom: 1px solid var(--line); }
+  .arq-feat .num { font: 500 12px/1 "Geist Mono", monospace; color: var(--text-mute); padding-top: 3px; }
+  .arq-feat h4 { margin: 0 0 4px; font-size: 17px; font-weight: 500; letter-spacing: -0.01em; }
+  .arq-feat p { margin: 0; color: var(--text-dim); font-size: 14px; line-height: 1.55; }
+
+  /* Phone demo */
+  .phone-demo {
+    width: min(360px, 100%); aspect-ratio: 9/19; margin: 0 auto;
+    background: #0a0a0b; border-radius: 44px; padding: 12px;
+    box-shadow: 0 40px 80px rgba(0,0,0,.55), inset 0 0 0 1.5px #2a2a2e;
+    position: relative;
+  }
+  .phone-demo .screen {
+    background: var(--paper); border-radius: 34px; height: 100%; width: 100%;
+    display: flex; flex-direction: column; overflow: hidden; position: relative;
+    color: var(--ink);
+  }
+  .phone-demo .pd-notch {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    width: 28%; height: 22px; background: #0a0a0b; border-radius: 14px; z-index: 2;
+  }
+
+  /* ARQCHECK chat UI */
+  .app-head {
+    padding: 38px 20px 14px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+  .app-head .logo { font-weight: 800; letter-spacing: -0.03em; font-size: 18px; display: flex; align-items: baseline; gap: 1px; }
+  .app-head .logo .check { background: var(--ink); color: var(--paper); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  .app-head .bell { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.12); display: grid; place-items: center; font-size: 12px; }
+  .chat { padding: 14px; display: flex; flex-direction: column; gap: 10px; flex: 1; overflow: hidden; }
+  .msg { padding: 10px 12px; border-radius: 14px; font-size: 13px; line-height: 1.4; max-width: 85%; }
+  .msg.user { align-self: flex-end; background: var(--ink); color: var(--paper); border-bottom-right-radius: 4px; }
+  .msg.bot  { align-self: flex-start; background: #fff; border: 1px solid rgba(0,0,0,.06); border-bottom-left-radius: 4px; }
+  .msg.bot .label { font: 500 10px/1 "Geist Mono", monospace; color: var(--g-orange); letter-spacing: 0.15em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+  .chat-pill { padding: 6px 10px; background: rgba(0,0,0,.05); border-radius: 999px; font: 500 10px/1 "Geist Mono", monospace; letter-spacing: 0.1em; text-transform: uppercase; align-self: center; color: #555; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { font-size: 10px; padding: 4px 8px; border-radius: 999px; background: rgba(0,0,0,.06); }
+  .composer { padding: 10px 12px; border-top: 1px solid rgba(0,0,0,.08); display: flex; align-items: center; gap: 8px; }
+  .composer .input { flex: 1; background: rgba(0,0,0,.05); border-radius: 999px; padding: 9px 14px; font-size: 12px; color: #555; }
+  .composer .send { width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-size: 14px; }
+
+  /* Quotes */
+  .quote-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .quote-grid { grid-template-columns: 1fr; } }
+  .quote {
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ink-2);
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  body.cream .quote { background: var(--ink-2); }
+  .quote p { margin: 0; font-family: "Instrument Serif", serif; font-size: 22px; line-height: 1.25; letter-spacing: -0.01em; }
+  .who { display: flex; gap: 12px; align-items: center; margin-top: auto; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--ink-3); display: grid; place-items: center; font-weight: 600; font-size: 13px; color: var(--text); }
+  .who .name { font-size: 13px; font-weight: 500; }
+  .who .role { font-size: 12px; color: var(--text-dim); }
+  .stars { color: var(--g-mustard); font-size: 13px; letter-spacing: 2px; }
+
+  /* OFFER */
+  .offer-wrap {
+    background: linear-gradient(160deg, #18181c 0%, #0e0e10 60%, #0e0e10 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 56px; position: relative; overflow: hidden;
+  }
+  body.cream .offer-wrap { background: #141416; color: var(--cream); border-color: #222; }
+  body.cream .offer-wrap .text-dim { color: #98948A; }
+  .offer-wrap::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(600px 300px at 90% -10%, color-mix(in oklab, var(--g-orange) 30%, transparent), transparent 60%),
+      radial-gradient(500px 300px at -10% 110%, color-mix(in oklab, var(--g-teal) 30%, transparent), transparent 60%);
+  }
+  .offer-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 48px; position: relative; z-index: 1; }
+  @media (max-width: 900px) { .offer-grid { grid-template-columns: 1fr; gap: 24px; } .offer-wrap { padding: 32px; } }
+  .offer-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
+  .offer-list li { display: grid; grid-template-columns: 20px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px dashed rgba(255,255,255,.12); font-size: 15px; }
+  .offer-list li:first-child { border-top: 0; }
+  .offer-list .tick { color: var(--g-mustard); }
+  .offer-list .tag { font: 500 11px/1 "Geist Mono", monospace; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,.08); color: #fff; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .price-card {
+    background: var(--cream); color: var(--ink);
+    border-radius: var(--radius); padding: 28px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .price-card .old { color: #777; text-decoration: line-through; font-size: 14px; }
+  .price-card .now { font-family: "Instrument Serif", serif; font-size: 72px; line-height: 0.9; letter-spacing: -0.03em; }
+  .price-card .now .cents { font-size: 28px; vertical-align: super; }
+  .price-card .installments { font-size: 13px; color: #555; }
+  .price-card .buy {
+    display: inline-flex; justify-content: center; padding: 16px;
+    background: var(--ink); color: var(--cream);
+    border-radius: 999px; font-weight: 500; text-decoration: none;
+    margin-top: 8px;
+  }
+  .price-card .buy:hover { background: var(--g-burgundy); color: #fff; }
+  .price-card .guarantee { font-size: 11px; color: #666; text-align: center; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* FAQ */
+  .faq { max-width: 900px; margin: 0 auto; }
+  .q { border-top: 1px solid var(--line); padding: 22px 0; }
+  .q:last-child { border-bottom: 1px solid var(--line); }
+  .q summary { list-style: none; display: flex; justify-content: space-between; gap: 16px; align-items: center; cursor: pointer; font-size: 20px; font-family: "Instrument Serif", serif; }
+  .q summary::-webkit-details-marker { display: none; }
+  .q .plus { font-family: "Geist Mono", monospace; font-size: 14px; color: var(--text-dim); transition: transform .2s ease; }
+  .q[open] .plus { transform: rotate(45deg); }
+  .q p { margin: 12px 0 0; color: var(--text-dim); font-size: 15px; line-height: 1.55; max-width: 720px; }
+
+  /* FOOTER */
+  footer.foot {
+    padding: 72px 0 36px;
+    display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px;
+  }
+  @media (max-width: 860px) { footer.foot { grid-template-columns: 1fr 1fr; } }
+  footer.foot h5 { font: 500 12px/1 "Geist Mono", monospace; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-mute); margin: 0 0 16px; }
+  footer.foot a { color: var(--text-dim); text-decoration: none; display: block; padding: 6px 0; font-size: 14px; }
+  footer.foot a:hover { color: var(--text); }
+  .foot-base {
+    border-top: 1px solid var(--line); padding: 20px 0; display: flex; justify-content: space-between;
+    color: var(--text-mute); font-size: 12px; letter-spacing: 0.04em;
+  }
+
+  /* TWEAKS panel */
+  .tweaks-panel {
+    position: fixed; right: 16px; bottom: 16px; z-index: 100;
+    background: #0a0a0b; color: #eee; border: 1px solid #2a2a30;
+    border-radius: 14px; padding: 16px; width: 280px; font-size: 13px;
+    box-shadow: 0 20px 40px rgba(0,0,0,.4);
+    display: none;
+  }
+  .tweaks-panel.open { display: block; }
+  .tweaks-panel h6 { margin: 0 0 10px; font: 600 12px/1 "Geist Mono", monospace; letter-spacing: 0.1em; text-transform: uppercase; color: #aaa; }
+  .tweaks-panel .row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .tweaks-panel select, .tweaks-panel button {
+    background: #17171a; color: #eee; border: 1px solid #2a2a30; padding: 6px 8px; border-radius: 6px; font: inherit;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="container nav-row">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div>SUPER COMBO<span style="color: var(--text-mute); margin-left: 8px; font-weight: 400;">/ ARQEXPRESS</span></div>
+    </div>
+    <div class="nav-links">
+      <a href="#guias">Os guias</a>
+      <a href="#arqcheck">ARQCHECK</a>
+      <a href="#depoimentos">Depoimentos</a>
+      <a href="#faq">Perguntas</a>
+    </div>
+    <a href="#oferta" class="nav-cta">Comprar o combo →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="eyebrow"><span class="dot"></span> Novo · Edição 2026 · Bundle completo</div>
+      <h1 class="display">
+        <span class="stack">Todo o acervo</span>
+        <span class="stack"><em>ARQEXPRESS</em></span>
+        <span class="stack"><span class="amp">&amp;</span> a <span class="under">IA dos guias</span>.</span>
+      </h1>
+      <p class="lead">
+        25 guias práticos que destravam o projeto — do briefing à obra. Agora com <strong style="color: var(--text);">ARQCHECK</strong>, a IA treinada em todo o conteúdo: pergunte, revise e não esqueça de nada.
+      </p>
+      <div class="cta-row">
+        <a href="#oferta" class="btn btn-primary">
+          Quero o Super Combo
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4l-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#guias" class="btn btn-ghost">Ver o que tem dentro</a>
+      </div>
+      <div class="badges">
+        <span class="badge">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L10 6l4.5.5-3.3 3.1.9 4.4L8 11.9l-4.1 2.1.9-4.4L1.5 6.5 6 6z" fill="currentColor"/></svg>
+          4.9/5 · 3.2k alunos
+        </span>
+        <span class="badge">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Acesso vitalício
+        </span>
+        <span class="badge">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M2 6h12" stroke="currentColor" stroke-width="1.2"/></svg>
+          7 dias de garantia
+        </span>
+      </div>
+    </div>
+
+    <div class="bundle" aria-hidden="true">
+      <div class="guide g1">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#01</div><div class="g-title">Passo a passo do projeto sem erros</div></div>
+      </div>
+      <div class="guide g2">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#02</div><div class="g-title">Guia do projeto arquitetônico</div></div>
+      </div>
+      <div class="guide g3">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#03</div><div class="g-title">Guia de banheiro</div></div>
+      </div>
+      <div class="guide g4">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#04</div><div class="g-title">Guia de decoração</div></div>
+      </div>
+      <div class="guide g5">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#05</div><div class="g-title">Guia de iluminação</div></div>
+      </div>
+      <div class="guide g6">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#06</div><div class="g-title">Guia de detalhamento</div></div>
+      </div>
+      <div class="guide g7">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#07</div><div class="g-title">Guia de briefing</div></div>
+      </div>
+      <div class="guide g8">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#08</div><div class="g-title">Guia de cozinha</div></div>
+      </div>
+      <div class="guide g9">
+        <div class="g-top"><span class="g-logo">ARQEXPRESS</span><span class="g-check">✓</span></div>
+        <div><div class="g-meta">#09</div><div class="g-title">Guia de pisos</div></div>
+      </div>
+
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div style="font: 500 10px/1 'Geist Mono', monospace; letter-spacing: 0.2em; color: #888; margin-bottom: 14px;">IA · AO VIVO</div>
+          <div class="arqlogo"><span class="arq">ARQ</span><span class="ck" style="background:#111;color:#fff;padding:2px 6px;border-radius:4px;font-size:14px;margin-left:2px;">CHECK</span></div>
+          <div style="font-family:'Instrument Serif', serif; font-size: 14px; margin-top: 10px; text-align:center; line-height: 1.1;">Pergunte para<br/>os seus guias.</div>
+          <div style="margin-top: 14px; display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
+            <span style="background:#f0f0f0;font-size:8px;padding:3px 7px;border-radius:99px;">briefing</span>
+            <span style="background:#f0f0f0;font-size:8px;padding:3px 7px;border-radius:99px;">iluminação</span>
+            <span style="background:#f0f0f0;font-size:8px;padding:3px 7px;border-radius:99px;">obra</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <span>25 guias</span><span class="dot"></span>
+    <span>+800 checklists</span><span class="dot"></span>
+    <span><em>IA treinada no acervo</em></span><span class="dot"></span>
+    <span>Atualizações vitalícias</span><span class="dot"></span>
+    <span>Do briefing à obra</span><span class="dot"></span>
+    <span>25 guias</span><span class="dot"></span>
+    <span>+800 checklists</span><span class="dot"></span>
+    <span><em>IA treinada no acervo</em></span><span class="dot"></span>
+    <span>Atualizações vitalícias</span><span class="dot"></span>
+    <span>Do briefing à obra</span><span class="dot"></span>
+  </div>
+</div>
+
+<!-- WHAT'S INCLUDED -->
+<section class="block" id="guias">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">01 / O QUE VEM DENTRO</div>
+        <h2 class="sec-title">25 guias. <em>Zero</em> achismo.</h2>
+      </div>
+      <p class="sec-sub">Cada guia é um manual visual curto, com checklists prontos, tabelas de especificação e erros clássicos que ninguém te conta. Escolha o que o seu projeto precisa hoje — consulte os outros amanhã.</p>
+    </div>
+
+    <div class="inc-grid" id="incGrid"><!-- injected --></div>
+  </div>
+</section>
+
+<!-- ARQCHECK -->
+<section class="block" id="arqcheck" style="background: var(--ink-2);">
+  <div class="container">
+    <div class="arq-split">
+      <div class="arq-copy">
+        <div class="sec-num">02 / A IA DOS GUIAS</div>
+        <h3>Seu acervo <em style="font-style: italic; color: var(--g-teal);">responde</em> agora.</h3>
+        <p class="sec-sub">ARQCHECK leu todos os guias por você. Pergunte em linguagem natural, gere checklists na hora e receba a resposta com a página exata do guia que a embasa.</p>
+        <div class="arq-features">
+          <div class="arq-feat">
+            <div class="num">01</div>
+            <div>
+              <h4>Pergunte de qualquer jeito</h4>
+              <p>“Checklist de visita técnica para apartamento dos anos 70.” Pronto. ARQCHECK cruza os guias relevantes.</p>
+            </div>
+          </div>
+          <div class="arq-feat">
+            <div class="num">02</div>
+            <div>
+              <h4>Resposta com fonte</h4>
+              <p>Toda resposta cita o guia e a página. Zero alucinação — é sempre conteúdo dos guias ARQEXPRESS.</p>
+            </div>
+          </div>
+          <div class="arq-feat">
+            <div class="num">03</div>
+            <div>
+              <h4>Gera checklists por projeto</h4>
+              <p>Cria uma lista customizada para o seu cliente e exporta em PDF pronto para compartilhar.</p>
+            </div>
+          </div>
+          <div class="arq-feat">
+            <div class="num">04</div>
+            <div>
+              <h4>Modo vistoria</h4>
+              <p>No canteiro, marque ✓/✗ e registre fotos. O relatório sai pronto no final do dia.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="phone-demo">
+          <div class="pd-notch"></div>
+          <div class="screen">
+            <div class="app-head">
+              <div class="logo">ARQ<span class="check">CHECK</span></div>
+              <div class="bell">◐</div>
+            </div>
+            <div class="chat">
+              <div class="chat-pill">HOJE · 14:32</div>
+              <div class="msg user">Preciso de um checklist de briefing para reforma de cozinha.</div>
+              <div class="msg bot">
+                <span class="label">ARQCHECK</span>
+                Gerei 18 perguntas a partir do <b>Guia de Cozinha</b> e <b>Guia de Briefing</b>:
+                <div class="chip-row">
+                  <span class="chip">• Rotina de uso</span>
+                  <span class="chip">• Eletro da casa</span>
+                  <span class="chip">• Ponto de gás</span>
+                  <span class="chip">• Iluminação tarefa</span>
+                </div>
+              </div>
+              <div class="msg user">Gera em PDF pra eu mandar pro cliente.</div>
+              <div class="msg bot">
+                <span class="label">PDF PRONTO</span>
+                <b>briefing-cozinha-guimaraes.pdf</b> · 2 páginas
+              </div>
+            </div>
+            <div class="composer">
+              <div class="input">Pergunte ao seu acervo…</div>
+              <div class="send">↑</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEPOIMENTOS -->
+<section class="block" id="depoimentos">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">03 / QUEM JÁ USA</div>
+        <h2 class="sec-title">Eles <em>pararam</em> de esquecer detalhes.</h2>
+      </div>
+      <p class="sec-sub">Mais de 3.200 arquitetos e designers de interiores usam o acervo ARQEXPRESS no dia a dia. Agora, com IA, o tempo de briefing caiu pela metade.</p>
+    </div>
+
+    <div class="quote-grid">
+      <div class="quote">
+        <div class="stars">★★★★★</div>
+        <p>“Economizei um dia inteiro por semana. O briefing já sai pronto do ARQCHECK e eu só ajusto com o cliente.”</p>
+        <div class="who"><div class="avatar" style="background: var(--g-hotpink); color:#fff;">C</div><div><div class="name">Carolina Meireles</div><div class="role">Arquiteta · São Paulo</div></div></div>
+      </div>
+      <div class="quote">
+        <div class="stars">★★★★★</div>
+        <p>“É como ter um sócio sênior do lado. Projeto pequeno ou grande, o checklist não deixa passar.”</p>
+        <div class="who"><div class="avatar" style="background: var(--g-teal); color:#fff;">R</div><div><div class="name">Rafael Torres</div><div class="role">Designer de interiores · Curitiba</div></div></div>
+      </div>
+      <div class="quote">
+        <div class="stars">★★★★★</div>
+        <p>“Os guias já eram ótimos. A IA deixou tudo instantâneo. Não abro obra sem o Super Combo.”</p>
+        <div class="who"><div class="avatar" style="background: var(--g-orange); color:#fff;">M</div><div><div class="name">Marina Okuda</div><div class="role">Arquiteta · Belo Horizonte</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OFFER -->
+<section class="block" id="oferta">
+  <div class="container">
+    <div class="offer-wrap">
+      <div class="offer-grid">
+        <div>
+          <div class="sec-num" style="color: var(--g-mustard);">04 / OFERTA DE LANÇAMENTO</div>
+          <h2 class="sec-title" style="color: #fff;">Tudo junto. <em>Uma vez só.</em></h2>
+          <p class="sec-sub" style="color: #bdb9b0; max-width: 520px; margin-top: 12px;">O bundle completo do acervo ARQEXPRESS + 12 meses de ARQCHECK Pro. Atualizações e novos guias inclusos.</p>
+
+          <ul class="offer-list">
+            <li><span class="tick">✓</span><span><b>25 guias completos</b> · 1.400+ páginas editáveis</span><span class="tag">Vitalício</span></li>
+            <li><span class="tick">✓</span><span><b>ARQCHECK Pro</b> · IA treinada em todo o acervo</span><span class="tag">12 meses</span></li>
+            <li><span class="tick">✓</span><span><b>+800 checklists</b> editáveis (Notion, PDF, CSV)</span><span class="tag">Bônus</span></li>
+            <li><span class="tick">✓</span><span><b>Biblioteca de referências</b> por ambiente</span><span class="tag">Bônus</span></li>
+            <li><span class="tick">✓</span><span><b>Templates de briefing</b> para enviar ao cliente</span><span class="tag">Bônus</span></li>
+            <li><span class="tick">✓</span><span><b>Comunidade</b> privada de profissionais</span><span class="tag">Bônus</span></li>
+          </ul>
+        </div>
+
+        <div class="price-card">
+          <div style="display:flex; justify-content: space-between; align-items: center;">
+            <span style="font: 500 11px/1 'Geist Mono', monospace; letter-spacing: 0.12em; text-transform: uppercase; background: var(--g-mustard); color: #1a1600; padding: 5px 9px; border-radius: 4px;">-52% off</span>
+            <span class="old">De R$ 1.247</span>
+          </div>
+          <div>
+            <div style="font-size: 13px; color:#555; margin-bottom: 4px;">Por 12x de</div>
+            <div class="now">R$ 49<span class="cents">,70</span></div>
+            <div class="installments">ou R$ 597 à vista · 7 dias de garantia</div>
+          </div>
+          <a href="#" class="buy">Quero o Super Combo →</a>
+          <div class="guarantee">Pagamento seguro · Acesso imediato</div>
+
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px;">
+            <div style="aspect-ratio: 1; background: var(--g-burgundy); border-radius: 3px;"></div>
+            <div style="aspect-ratio: 1; background: var(--g-teal); border-radius: 3px;"></div>
+            <div style="aspect-ratio: 1; background: var(--g-orange); border-radius: 3px;"></div>
+            <div style="aspect-ratio: 1; background: var(--g-forest); border-radius: 3px;"></div>
+            <div style="aspect-ratio: 1; background: var(--g-hotpink); border-radius: 3px;"></div>
+            <div style="aspect-ratio: 1; background: var(--g-mustard); border-radius: 3px;"></div>
+            <div style="aspect-ratio: 1; background: var(--g-violet); border-radius: 3px;"></div>
+            <div style="aspect-ratio: 1; background: var(--g-navy); border-radius: 3px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="block" id="faq">
+  <div class="container faq">
+    <div class="sec-head" style="grid-template-columns: 1fr;">
+      <div>
+        <div class="sec-num">05 / PERGUNTAS FREQUENTES</div>
+        <h2 class="sec-title">Antes de comprar.</h2>
+      </div>
+    </div>
+
+    <details class="q" open>
+      <summary>Os guias vêm impressos ou digitais? <span class="plus">+</span></summary>
+      <p>Todos os guias são 100% digitais — PDFs editáveis de alta resolução, acessíveis no app e no navegador. Você baixa quantas vezes quiser, para sempre.</p>
+    </details>
+    <details class="q">
+      <summary>O que é exatamente o ARQCHECK? <span class="plus">+</span></summary>
+      <p>ARQCHECK é a IA treinada exclusivamente no conteúdo dos 25 guias ARQEXPRESS. Você pergunta em linguagem natural, ela responde com citação direta do guia/página e pode gerar checklists em PDF para clientes e obra.</p>
+    </details>
+    <details class="q">
+      <summary>Preciso pagar de novo no ano que vem? <span class="plus">+</span></summary>
+      <p>Os guias são vitalícios. ARQCHECK Pro vem com 12 meses inclusos no Super Combo; após esse período, a renovação é opcional. Você mantém acesso a todos os guias para sempre.</p>
+    </details>
+    <details class="q">
+      <summary>Serve para quem está começando? <span class="plus">+</span></summary>
+      <p>Sim. Os guias foram escritos para acompanhar do estudante ao arquiteto sênior. O “Passo a passo do projeto sem erros” é literalmente por onde se começa.</p>
+    </details>
+    <details class="q">
+      <summary>E se eu não gostar? <span class="plus">+</span></summary>
+      <p>Você tem 7 dias para pedir reembolso integral, sem perguntas. Se não te servir, devolvemos 100%.</p>
+    </details>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="block" style="border-bottom: 0; text-align: center;">
+  <div class="container">
+    <h2 class="sec-title" style="font-size: clamp(48px, 6.5vw, 96px);">Seu acervo.<br/><em>Sua IA.</em> Um combo.</h2>
+    <div style="display:flex; gap: 12px; justify-content: center; margin-top: 32px; flex-wrap: wrap;">
+      <a href="#oferta" class="btn btn-primary">Quero o Super Combo — R$ 49,70/mês</a>
+      <a href="#guias" class="btn btn-ghost">Ver os 25 guias</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="container foot">
+  <div>
+    <div class="brand"><div class="brand-mark"></div><div>ARQEXPRESS</div></div>
+    <p style="color: var(--text-dim); font-size: 14px; margin-top: 14px; max-width: 280px;">Guias práticos de arquitetura e interiores, feitos por quem projeta todo dia.</p>
+  </div>
+  <div>
+    <h5>Produto</h5>
+    <a href="#guias">Os 25 guias</a>
+    <a href="#arqcheck">ARQCHECK</a>
+    <a href="#oferta">Preço</a>
+  </div>
+  <div>
+    <h5>Empresa</h5>
+    <a href="#">Sobre</a>
+    <a href="#">Blog</a>
+    <a href="#">Contato</a>
+  </div>
+  <div>
+    <h5>Suporte</h5>
+    <a href="#">Ajuda</a>
+    <a href="#">Termos</a>
+    <a href="#">Privacidade</a>
+  </div>
+</footer>
+<div class="container foot-base">
+  <div>© 2026 ARQEXPRESS. Todos os direitos reservados.</div>
+  <div>Feito em São Paulo, BR.</div>
+</div>
+
+<!-- TWEAKS -->
+<div class="tweaks-panel" id="tweaks">
+  <h6>Tweaks</h6>
+  <div class="row"><span>Tema</span>
+    <select id="tw-theme">
+      <option value="ink">Ink (escuro)</option>
+      <option value="cream">Cream (claro)</option>
+    </select>
+  </div>
+  <div class="row"><span>Hero</span>
+    <select id="tw-headline">
+      <option value="0">Acervo + IA dos guias</option>
+      <option value="1">Do briefing à obra</option>
+      <option value="2">25 guias, 1 IA</option>
+    </select>
+  </div>
+  <div class="row"><span>Accent</span>
+    <select id="tw-accent">
+      <option value="mustard">Mustard</option>
+      <option value="hotpink">Hot pink</option>
+      <option value="teal">Teal</option>
+      <option value="orange">Orange</option>
+    </select>
+  </div>
+</div>
+
+<script>
+(() => {
+  const TWEAKS = /*EDITMODE-BEGIN*/{
+    "theme": "cream",
+    "headline": 1,
+    "accent": "teal"
+  }/*EDITMODE-END*/;
+
+  // Inject "what's included" cards
+  const guides = [
+    { t: "Passo a passo do projeto sem erros", c: "var(--g-burgundy)", span: 3 },
+    { t: "Guia do projeto arquitetônico", c: "var(--g-black)", span: 3 },
+    { t: "Guia de briefing", c: "var(--g-lime)", span: 3, dark: true },
+    { t: "Guia de decoração", c: "var(--g-forest)", span: 3 },
+    { t: "Guia de banheiro", c: "var(--g-teal)", span: 4 },
+    { t: "Guia de iluminação", c: "var(--g-mustard)", span: 4, dark: true },
+    { t: "Guia de cozinha", c: "var(--g-orange)", span: 4 },
+    { t: "Guia de detalhamento I", c: "var(--g-sage)", span: 3 },
+    { t: "Guia de detalhamento II", c: "var(--g-hotpink)", span: 3 },
+    { t: "Guia de detalhamento III", c: "var(--g-red)", span: 3 },
+    { t: "Guia de detalhamento IV", c: "var(--g-violet)", span: 3 },
+    { t: "Guia de pisos, rodapés e emendas", c: "var(--g-navy)", span: 4 },
+    { t: "Refrigeração & clima", c: "#5C4A37", span: 4 },
+    { t: "Especificação de esquadrias", c: "var(--g-hotpink)", span: 4 },
+    { t: "Levantamento técnico", c: "var(--g-navy)", span: 3 },
+    { t: "Quarto de dormir", c: "var(--g-sage)", span: 3 },
+    { t: "Mobiliário & marcenaria", c: "#3B2A52", span: 3 },
+    { t: "Áreas externas", c: "#2F5D3E", span: 3 },
+    { t: "Gestão de obra", c: "var(--g-red)", span: 4 },
+    { t: "Orçamento & honorários", c: "var(--g-orange)", span: 4 },
+    { t: "Apresentação ao cliente", c: "var(--g-teal)", span: 4 },
+    { t: "Mood & conceito", c: "var(--g-hotpink)", span: 3 },
+    { t: "Sustentabilidade", c: "var(--g-forest)", span: 3 },
+    { t: "Acessibilidade", c: "var(--g-navy)", span: 3 },
+    { t: "Entrega & pós-obra", c: "#18181c", span: 3 },
+  ];
+  const grid = document.getElementById("incGrid");
+  guides.forEach((g, i) => {
+    const el = document.createElement("div");
+    el.className = `inc span-${g.span}`;
+    el.style.background = g.c;
+    if (g.dark) el.style.color = "#1a1600";
+    el.innerHTML = `
+      <div>
+        <div class="num">ARQEXPRESS · ${String(i+1).padStart(2,"0")}</div>
+      </div>
+      <div class="title">${g.t}</div>
+      <div class="foot"><span>Guia</span><span>PDF + IA</span></div>
+    `;
+    grid.appendChild(el);
+  });
+
+  // Apply tweaks
+  const headlines = [
+    { a: "Todo o acervo", b: "<em>ARQEXPRESS</em>", c: "<span class='amp'>&amp;</span> a <span class='under'>IA dos guias</span>." },
+    { a: "Do briefing", b: "<em>à obra.</em>", c: "Tudo em um <span class='under'>só combo</span>." },
+    { a: "25 guias.", b: "<em>1 IA.</em>", c: "<span class='under'>Zero</span> achismo." },
+  ];
+  const apply = (t) => {
+    document.body.classList.toggle("cream", t.theme === "cream");
+    const h1 = document.querySelector("h1.display");
+    const hl = headlines[t.headline] || headlines[0];
+    h1.innerHTML = `<span class="stack">${hl.a}</span><span class="stack">${hl.b}</span><span class="stack">${hl.c}</span>`;
+    const accentMap = { mustard: "var(--g-mustard)", hotpink: "var(--g-hotpink)", teal: "var(--g-teal)", orange: "var(--g-orange)" };
+    document.documentElement.style.setProperty("--accent", accentMap[t.accent] || accentMap.mustard);
+    // Update italic color in h1 via CSS var style override
+    const style = document.getElementById("accent-style") || Object.assign(document.createElement("style"), { id: "accent-style" });
+    style.textContent = `h1.display em, .sec-title em { color: ${accentMap[t.accent]}; }
+      .btn-primary:hover { background: ${accentMap[t.accent]}; }
+      .offer-list .tick { color: ${accentMap[t.accent]}; }`;
+    document.head.appendChild(style);
+  };
+  apply(TWEAKS);
+
+  // Wire tweaks UI
+  const panel = document.getElementById("tweaks");
+  const twTheme = document.getElementById("tw-theme");
+  const twHead = document.getElementById("tw-headline");
+  const twAcc = document.getElementById("tw-accent");
+  twTheme.value = TWEAKS.theme; twHead.value = TWEAKS.headline; twAcc.value = TWEAKS.accent;
+
+  const onChange = () => {
+    const edits = { theme: twTheme.value, headline: parseInt(twHead.value), accent: twAcc.value };
+    Object.assign(TWEAKS, edits);
+    apply(TWEAKS);
+    window.parent.postMessage({ type: "__edit_mode_set_keys", edits }, "*");
+  };
+  twTheme.addEventListener("change", onChange);
+  twHead.addEventListener("change", onChange);
+  twAcc.addEventListener("change", onChange);
+
+  // Edit-mode protocol
+  window.addEventListener("message", (e) => {
+    const d = e.data || {};
+    if (d.type === "__activate_edit_mode") panel.classList.add("open");
+    if (d.type === "__deactivate_edit_mode") panel.classList.remove("open");
+  });
+  window.parent.postMessage({ type: "__edit_mode_available" }, "*");
+})();
+</script>
+
+</body>
+</html>
