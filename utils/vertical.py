@@ -108,20 +108,17 @@ def _run_ffmpeg(cmd: list[str]) -> None:
 
 
 def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
-    face_left = face is None or face[0] < 0.5
-    half_w = _even(sw // 2)
-    if face_left:
-        face_x, slide_x = 0, half_w
-    else:
-        face_x, slide_x = half_w, 0
+    # Top: frame inteiro (apresentação) escalado + letterbox pra 1080x960.
+    # Bottom: crop vertical (9:8 ≈ 1080:960) centrado no rosto, escalado pra 1080x960.
+    crop_w = _even(int(sh * 1080 / 960))
+    crop_w = min(crop_w, sw)
+    fcx = (face[0] * sw) if face else (sw / 2)
+    x0 = _even(int(max(0, min(sw - crop_w, fcx - crop_w / 2))))
 
-    # Cada metade (half_w x sh) vai virar 1080x960.
-    # Escala pela largura 1080 e corta/pad vertical para bater 960.
     filter_complex = (
-        f"[0:v]crop={half_w}:{sh}:{face_x}:0,"
-        f"scale=1080:-2,crop=1080:960[top];"
-        f"[0:v]crop={half_w}:{sh}:{slide_x}:0,"
-        f"scale=1080:-2,crop=1080:960[bottom];"
+        f"[0:v]scale=1080:-2,"
+        f"pad=1080:960:0:(960-ih)/2:color=black,crop=1080:960[top];"
+        f"[0:v]crop={crop_w}:{sh}:{x0}:0,scale=1080:960[bottom];"
         f"[top][bottom]vstack=inputs=2[out]"
     )
     _run_ffmpeg([
