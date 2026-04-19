@@ -281,12 +281,18 @@ with tab_video:
                     st.write(f"   {len(transcript.get('segments') or [])} segmentos transcritos.")
 
                     st.write("🧠 Identificando tópicos e clipes…")
+                    _seg_prog = st.progress(0.0)
+
+                    def _seg_cb(done, total):
+                        _seg_prog.progress(min(1.0, done / max(1, total)))
+
                     topics = segment_topics(
                         transcript,
                         api_key=_api_key,
                         min_clip_sec=min_clip,
                         max_clip_sec=max_clip,
                         target_n=target_n or None,
+                        progress_cb=_seg_cb,
                     )
                     if not topics:
                         status.update(label="Nenhum clipe identificado", state="error")

@@ -3,14 +3,24 @@
 Passa os segments numerados e peça ao modelo para agrupar em capítulos
 coerentes. Sempre validamos a saída e snapamos em bordas de segment
 para nunca cortar no meio de uma frase.
+
+Para vídeos longos (>150 segments ≈ >30min), o transcript é dividido
+em chunks e processado por partes — evita estourar TPM e também ajuda
+o modelo a não ser preguiçoso numa lista gigantesca.
 """
 
 from __future__ import annotations
 
 import json
-from typing import Optional
+import time
+from typing import Callable, Optional
 
 from openai import OpenAI
+
+
+SEGMENTS_PER_CHUNK = 150  # ~30min de fala por chunk
+SLEEP_BETWEEN_CHUNKS = 1.5  # folga pro TPM
+
 
 
 SYSTEM_PROMPT = (
@@ -123,23 +133,21 @@ def _snap_to_segments(
     return result
 
 
-def segment_topics(
-    transcript: dict,
-    api_key: str,
-    min_clip_sec: int = 30,
-    max_clip_sec: int = 180,
-    target_n: Optional[int] = None,
-    model: str = "gpt-4o",
+def _process_chunk(
+    client: OpenAI,
+    model: str,
+    chunk_segments: list[dict],
+    offset: int,
+    min_clip_sec: int,
+    max_clip_sec: int,
+    target_n: Optional[int],
 ) -> list[dict]:
-    """Chama o LLM e retorna a lista de tópicos validada."""
-    segments = transcript.get("segments") or []
-    if not segments:
-        return []
-
-    duration = float(transcript.get("duration") or segments[-1]["end"])
-    user_prompt = _build_user_prompt(transcript, min_clip_sec, max_clip_sec, target_n)
-
-    client = OpenAI(api_key=api_key)
+    """Processa um chunk de segments. Reindexa pra 0-based localmente e
+    adiciona offset nos índices retornados pra bater com a lista original."""
+    local = [{**s, "id": j} for j, s in enumerate(chunk_segments)]
+    local_duration = float(chunk_segments[-1]["end"])
+    local_transcript = {"segments": local, "duration": local_duration}
+    user_prompt = _build_user_prompt(local_transcript, min_clip_sec, max_clip_sec, target_n)
 
     def _ask(extra_system: str = "") -> str:
         resp = client.chat.completions.create(
@@ -150,17 +158,65 @@ def segment_topics(
             ],
             response_format={"type": "json_object"},
             temperature=0.3,
-            max_tokens=16384,
+            max_tokens=8192,
         )
         return resp.choices[0].message.content or "{}"
 
     try:
         chapters = _parse_chapters(_ask())
     except (json.JSONDecodeError, ValueError):
-        # Um retry com instrução mais explícita.
         chapters = _parse_chapters(_ask(
             " Sua resposta anterior não foi JSON válido. "
             "Responda APENAS o objeto JSON pedido, sem texto extra."
         ))
 
-    return _snap_to_segments(chapters, segments, duration, min_clip_sec)
+    # Offset pros índices globais.
+    for ch in chapters:
+        try:
+            ch["start_idx"] = int(ch.get("start_idx")) + offset
+            ch["end_idx"] = int(ch.get("end_idx")) + offset
+        except (TypeError, ValueError):
+            pass
+    return chapters
+
+
+def segment_topics(
+    transcript: dict,
+    api_key: str,
+    min_clip_sec: int = 30,
+    max_clip_sec: int = 180,
+    target_n: Optional[int] = None,
+    model: str = "gpt-4o-mini",
+    progress_cb: Optional[Callable[[int, int], None]] = None,
+) -> list[dict]:
+    """Chama o LLM (em chunks, se necessário) e retorna tópicos validados."""
+    segments = transcript.get("segments") or []
+    if not segments:
+        return []
+
+    duration = float(transcript.get("duration") or segments[-1]["end"])
+    client = OpenAI(api_key=api_key)
+
+    all_chapters: list[dict] = []
+    total_chunks = max(1, (len(segments) + SEGMENTS_PER_CHUNK - 1) // SEGMENTS_PER_CHUNK)
+
+    for i in range(total_chunks):
+        start = i * SEGMENTS_PER_CHUNK
+        end = min(len(segments), start + SEGMENTS_PER_CHUNK)
+        chunk = segments[start:end]
+        if not chunk:
+            continue
+        if progress_cb:
+            progress_cb(i, total_chunks)
+        chapters = _process_chunk(
+            client, model, chunk, start,
+            min_clip_sec, max_clip_sec, target_n,
+        )
+        all_chapters.extend(chapters)
+        if i < total_chunks - 1:
+            time.sleep(SLEEP_BETWEEN_CHUNKS)
+
+    if progress_cb:
+        progress_cb(total_chunks, total_chunks)
+
+    return _snap_to_segments(all_chapters, segments, duration, min_clip_sec)
