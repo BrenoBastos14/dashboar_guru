@@ -20,6 +20,9 @@ import numpy as np
 OUT_W = 1080
 OUT_H = 1920
 HALF_H = OUT_H // 2  # 960
+# side_by_side usa 40/60: apresentação em cima, pessoa maior embaixo.
+SBS_TOP_H = 768
+SBS_BOT_H = OUT_H - SBS_TOP_H  # 1152
 
 Layout = Literal["auto", "side_by_side", "pip", "face_only"]
 
@@ -108,29 +111,28 @@ def _run_ffmpeg(cmd: list[str]) -> None:
 
 
 def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
-    # Bottom: crop apertado em torno do rosto (9:8 ≈ 1080:960).
-    # Se o rosto é pequeno (ex.: PiP no canto), fechamos o quadro pra dar destaque.
+    # Bottom: crop apertado em torno do rosto, aspect OUT_W:SBS_BOT_H.
+    bot_ar = OUT_W / SBS_BOT_H
     if face:
         fcx = face[0] * sw
         fcy = face[1] * sh
         fh_px = max(1.0, face[3] * sh)
-        # Rosto ocupa ~35% da altura do quadro final.
-        crop_h = int(fh_px / 0.35)
-        crop_w = int(crop_h * 1080 / 960)
+        # Rosto ocupa ~40% da altura do quadro final.
+        crop_h = int(fh_px / 0.40)
+        crop_w = int(crop_h * bot_ar)
         crop_h = min(crop_h, sh)
         crop_w = min(crop_w, sw)
-        # Re-ajusta pra manter aspect 1080:960 depois do clamp.
-        if crop_w / max(1, crop_h) > 1080 / 960:
-            crop_w = int(crop_h * 1080 / 960)
+        if crop_w / max(1, crop_h) > bot_ar:
+            crop_w = int(crop_h * bot_ar)
         else:
-            crop_h = int(crop_w * 960 / 1080)
+            crop_h = int(crop_w / bot_ar)
         crop_w = _even(max(240, crop_w))
         crop_h = _even(max(240, crop_h))
         x0 = _even(int(max(0, min(sw - crop_w, fcx - crop_w / 2))))
         y0 = _even(int(max(0, min(sh - crop_h, fcy - crop_h / 2))))
     else:
         crop_h = sh
-        crop_w = _even(min(sw, int(sh * 1080 / 960)))
+        crop_w = _even(min(sw, int(sh * bot_ar)))
         x0 = _even(int((sw - crop_w) / 2))
         y0 = 0
 
@@ -139,12 +141,10 @@ def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
         fx = face[0]
         fw_rel = face[2]
         if fx > 0.5:
-            # PiP à direita → corta um pouco além da borda esquerda do PiP.
             edge = max(0.4, fx - fw_rel * 2.0)
             top_cw = _even(int(sw * edge))
             top_cx = 0
         else:
-            # PiP à esquerda → começa crop depois do PiP.
             edge = min(0.6, fx + fw_rel * 2.0)
             top_cx = _even(int(sw * edge))
             top_cw = _even(sw - top_cx)
@@ -153,10 +153,10 @@ def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
         top_pre = ""
 
     filter_complex = (
-        f"[0:v]{top_pre}scale=-2:960:flags=lanczos,"
-        f"crop=1080:960:(iw-1080)/2:0[top];"
+        f"[0:v]{top_pre}scale=-2:{SBS_TOP_H}:flags=lanczos,"
+        f"crop={OUT_W}:{SBS_TOP_H}:(iw-{OUT_W})/2:0[top];"
         f"[0:v]crop={crop_w}:{crop_h}:{x0}:{y0},"
-        f"scale=1080:960:flags=lanczos[bottom];"
+        f"scale={OUT_W}:{SBS_BOT_H}:flags=lanczos[bottom];"
         f"[top][bottom]vstack=inputs=2[out]"
     )
     _run_ffmpeg([
