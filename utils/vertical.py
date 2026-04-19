@@ -108,17 +108,36 @@ def _run_ffmpeg(cmd: list[str]) -> None:
 
 
 def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
-    # Top: frame inteiro (apresentação) escalado + letterbox pra 1080x960.
-    # Bottom: crop vertical (9:8 ≈ 1080:960) centrado no rosto, escalado pra 1080x960.
-    crop_w = _even(int(sh * 1080 / 960))
-    crop_w = min(crop_w, sw)
-    fcx = (face[0] * sw) if face else (sw / 2)
-    x0 = _even(int(max(0, min(sw - crop_w, fcx - crop_w / 2))))
+    # Bottom: crop apertado em torno do rosto (9:8 ≈ 1080:960).
+    # Se o rosto é pequeno (ex.: PiP no canto), fechamos o quadro pra dar destaque.
+    if face:
+        fcx = face[0] * sw
+        fcy = face[1] * sh
+        fh_px = max(1.0, face[3] * sh)
+        # Rosto ocupa ~35% da altura do quadro final.
+        crop_h = int(fh_px / 0.35)
+        crop_w = int(crop_h * 1080 / 960)
+        crop_h = min(crop_h, sh)
+        crop_w = min(crop_w, sw)
+        # Re-ajusta pra manter aspect 1080:960 depois do clamp.
+        if crop_w / max(1, crop_h) > 1080 / 960:
+            crop_w = int(crop_h * 1080 / 960)
+        else:
+            crop_h = int(crop_w * 960 / 1080)
+        crop_w = _even(max(240, crop_w))
+        crop_h = _even(max(240, crop_h))
+        x0 = _even(int(max(0, min(sw - crop_w, fcx - crop_w / 2))))
+        y0 = _even(int(max(0, min(sh - crop_h, fcy - crop_h / 2))))
+    else:
+        crop_h = sh
+        crop_w = _even(min(sw, int(sh * 1080 / 960)))
+        x0 = _even(int((sw - crop_w) / 2))
+        y0 = 0
 
+    # Top: zoom-to-fill — escala altura pra 960 e corta laterais pra 1080.
     filter_complex = (
-        f"[0:v]scale=1080:-2,"
-        f"pad=1080:960:0:(960-ih)/2:color=black,crop=1080:960[top];"
-        f"[0:v]crop={crop_w}:{sh}:{x0}:0,scale=1080:960[bottom];"
+        f"[0:v]scale=-2:960,crop=1080:960:(iw-1080)/2:0[top];"
+        f"[0:v]crop={crop_w}:{crop_h}:{x0}:{y0},scale=1080:960[bottom];"
         f"[top][bottom]vstack=inputs=2[out]"
     )
     _run_ffmpeg([
