@@ -56,7 +56,7 @@ def _build_user_prompt(
         f"- Cada clipe deve ter NO MÍNIMO {min_clip_sec}s.\n"
         f"- Selecione APENAS os trechos que ficariam bem como cortes "
         f"independentes — não precisa cobrir o vídeo inteiro.\n"
-        f"- Prefira 3-8 clipes excelentes a 20 clipes medíocres.\n"
+        f"- Gere quantos clipes forem relevantes; não há limite de quantidade.\n"
     )
     if target_n:
         guidance += f"- Tente produzir cerca de {target_n} clipes.\n"

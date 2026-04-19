@@ -133,9 +133,9 @@ with tab_video:
     def _render_video_tab():
         st.markdown("## 🎬 Video Cutter — Cortes por fala")
         st.caption(
-            "Faça upload de um vídeo (até 2h) e a ferramenta transcreve a fala, "
+            "Faça upload de um vídeo (até 5h) e a ferramenta transcreve a fala, "
             "identifica tópicos e gera clipes curtos independentes. "
-            "Recomendação: vídeos acima de 500 MB podem estourar memória/disco do "
+            "Recomendação: vídeos muito grandes (>5 GB) podem estourar memória/disco do "
             "servidor — exporte em 720p h264 antes."
         )
 
