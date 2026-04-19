@@ -14,13 +14,15 @@ from openai import OpenAI
 
 
 SYSTEM_PROMPT = (
-    "Você é um editor de vídeo sênior que assiste à transcrição de uma aula, "
-    "podcast ou palestra longa e SELECIONA apenas os melhores momentos para "
-    "virar clipes curtos e impactantes (highlights/shorts). "
-    "Seja criterioso: escolha somente trechos que funcionam sozinhos — "
-    "afirmações fortes, insights, histórias completas, momentos com punch. "
-    "IGNORE: introduções genéricas, digressões, repetições, trechos sem "
-    "contexto ou sem payoff. Prefira qualidade sobre quantidade. "
+    "Você é um editor de vídeo que assiste à transcrição de uma aula, "
+    "podcast ou palestra longa e identifica TODOS os trechos que podem virar "
+    "clipes curtos independentes (highlights/shorts). "
+    "Seja ABRANGENTE: extraia cada bloco temático distinto — afirmações "
+    "fortes, insights, histórias, definições, exemplos, dicas práticas, "
+    "perguntas respondidas, momentos com punch. "
+    "NÃO limite a quantidade — em um vídeo de 1h pode haver 15-30 clipes; "
+    "em 4h, 50-100 ou mais. Só ignore trechos vazios (só pausas, "
+    "apresentação genérica, mero 'tchau'). "
     "Cada clipe é autocontido, começando e terminando em trechos existentes. "
     "Responda SEMPRE em JSON válido no formato: "
     '{"chapters": [{"title": "...", "summary": "...", '
@@ -127,7 +129,7 @@ def segment_topics(
     min_clip_sec: int = 30,
     max_clip_sec: int = 180,
     target_n: Optional[int] = None,
-    model: str = "gpt-4o-mini",
+    model: str = "gpt-4o",
 ) -> list[dict]:
     """Chama o LLM e retorna a lista de tópicos validada."""
     segments = transcript.get("segments") or []
@@ -148,6 +150,7 @@ def segment_topics(
             ],
             response_format={"type": "json_object"},
             temperature=0.3,
+            max_tokens=16384,
         )
         return resp.choices[0].message.content or "{}"
 
