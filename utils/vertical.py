@@ -1,7 +1,7 @@
 """Conversão de clipes horizontais (16:9) em vertical 9:16 para reels/shorts.
 
-Detecta o rosto com mediapipe (tira uma média de amostras no clipe), decide
-o layout e compõe o output 1080x1920 via filtros ffmpeg:
+Detecta o rosto com o cascade Haar do OpenCV (tira uma média de amostras no
+clipe), decide o layout e compõe o output 1080x1920 via filtros ffmpeg:
 - side_by_side: top = metade com a face; bottom = metade com os slides
 - pip: top = crop quadrado ao redor da face; bottom = frame inteiro
 - face_only: crop vertical 9:16 centrado na face
@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Callable, Literal, Optional
 
 import cv2
-import mediapipe as mp
 import numpy as np
 
 
@@ -38,11 +37,10 @@ def _detect_face_average(video_path: str, samples: int = 20) -> Optional[tuple[f
         cap.release()
         return None
 
-    step = max(1, total // samples)
-    detector = mp.solutions.face_detection.FaceDetection(
-        model_selection=1, min_detection_confidence=0.5
-    )
+    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    detector = cv2.CascadeClassifier(cascade_path)
 
+    step = max(1, total // samples)
     centers: list[tuple[float, float]] = []
     sizes: list[tuple[float, float]] = []
     try:
@@ -52,21 +50,18 @@ def _detect_face_average(video_path: str, samples: int = 20) -> Optional[tuple[f
             ret, frame = cap.read()
             if not ret:
                 break
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            res = detector.process(rgb)
-            if res.detections:
-                best = max(
-                    res.detections,
-                    key=lambda d: d.location_data.relative_bounding_box.width
-                    * d.location_data.relative_bounding_box.height,
-                )
-                box = best.location_data.relative_bounding_box
-                centers.append((box.xmin + box.width / 2, box.ymin + box.height / 2))
-                sizes.append((box.width, box.height))
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            h, w = gray.shape[:2]
+            faces = detector.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
+            )
+            if len(faces) > 0:
+                x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+                centers.append(((x + fw / 2) / w, (y + fh / 2) / h))
+                sizes.append((fw / w, fh / h))
             frame_idx += step
     finally:
         cap.release()
-        detector.close()
 
     if not centers:
         return None
