@@ -153,8 +153,9 @@ def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
         top_pre = ""
 
     filter_complex = (
-        f"[0:v]{top_pre}scale=-2:{SBS_TOP_H}:flags=lanczos,"
-        f"crop={OUT_W}:{SBS_TOP_H}:(iw-{OUT_W})/2:0[top];"
+        f"[0:v]{top_pre}"
+        f"scale={OUT_W}:{SBS_TOP_H}:force_original_aspect_ratio=increase:flags=lanczos,"
+        f"crop={OUT_W}:{SBS_TOP_H}[top];"
         f"[0:v]crop={crop_w}:{crop_h}:{x0}:{y0},"
         f"scale={OUT_W}:{SBS_BOT_H}:flags=lanczos[bottom];"
         f"[top][bottom]vstack=inputs=2[out]"
