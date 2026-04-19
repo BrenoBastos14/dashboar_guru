@@ -134,18 +134,38 @@ def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
         x0 = _even(int((sw - crop_w) / 2))
         y0 = 0
 
-    # Top: zoom-to-fill — escala altura pra 960 e corta laterais pra 1080.
+    # Top: se o rosto é um PiP pequeno no canto, cortamos o lado onde ele fica.
+    if face and face[2] < 0.25:
+        fx = face[0]
+        fw_rel = face[2]
+        if fx > 0.5:
+            # PiP à direita → corta um pouco além da borda esquerda do PiP.
+            edge = max(0.4, fx - fw_rel * 2.0)
+            top_cw = _even(int(sw * edge))
+            top_cx = 0
+        else:
+            # PiP à esquerda → começa crop depois do PiP.
+            edge = min(0.6, fx + fw_rel * 2.0)
+            top_cx = _even(int(sw * edge))
+            top_cw = _even(sw - top_cx)
+        top_pre = f"crop={top_cw}:{sh}:{top_cx}:0,"
+    else:
+        top_pre = ""
+
     filter_complex = (
-        f"[0:v]scale=-2:960,crop=1080:960:(iw-1080)/2:0[top];"
-        f"[0:v]crop={crop_w}:{crop_h}:{x0}:{y0},scale=1080:960[bottom];"
+        f"[0:v]{top_pre}scale=-2:960:flags=lanczos,"
+        f"crop=1080:960:(iw-1080)/2:0[top];"
+        f"[0:v]crop={crop_w}:{crop_h}:{x0}:{y0},"
+        f"scale=1080:960:flags=lanczos[bottom];"
         f"[top][bottom]vstack=inputs=2[out]"
     )
     _run_ffmpeg([
         "ffmpeg", "-y", "-i", src,
         "-filter_complex", filter_complex,
         "-map", "[out]", "-map", "0:a?",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-        "-c:a", "aac", "-b:a", "128k",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k",
         "-movflags", "+faststart",
         out,
     ])
@@ -166,8 +186,9 @@ def _render_pip(src: str, out: str, face, sw: int, sh: int) -> str:
     y0 = _even(int(max(0, min(sh - side, fcy - side / 2))))
 
     filter_complex = (
-        f"[0:v]crop={side}:{side}:{x0}:{y0},scale=1080:960[top];"
-        f"[0:v]scale=1080:-2,"
+        f"[0:v]crop={side}:{side}:{x0}:{y0},"
+        f"scale=1080:960:flags=lanczos[top];"
+        f"[0:v]scale=1080:-2:flags=lanczos,"
         f"pad=1080:960:0:(960-ih)/2:color=black,crop=1080:960[bottom];"
         f"[top][bottom]vstack=inputs=2[out]"
     )
@@ -175,8 +196,9 @@ def _render_pip(src: str, out: str, face, sw: int, sh: int) -> str:
         "ffmpeg", "-y", "-i", src,
         "-filter_complex", filter_complex,
         "-map", "[out]", "-map", "0:a?",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-        "-c:a", "aac", "-b:a", "128k",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k",
         "-movflags", "+faststart",
         out,
     ])
@@ -191,14 +213,16 @@ def _render_face_only(src: str, out: str, face, sw: int, sh: int) -> str:
     x0 = _even(int(max(0, min(sw - crop_w, fcx - crop_w / 2))))
 
     filter_complex = (
-        f"[0:v]crop={crop_w}:{sh}:{x0}:0,scale=1080:1920[out]"
+        f"[0:v]crop={crop_w}:{sh}:{x0}:0,"
+        f"scale=1080:1920:flags=lanczos[out]"
     )
     _run_ffmpeg([
         "ffmpeg", "-y", "-i", src,
         "-filter_complex", filter_complex,
         "-map", "[out]", "-map", "0:a?",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-        "-c:a", "aac", "-b:a", "128k",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k",
         "-movflags", "+faststart",
         out,
     ])
