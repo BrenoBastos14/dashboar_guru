@@ -20,9 +20,9 @@ import numpy as np
 OUT_W = 1080
 OUT_H = 1920
 HALF_H = OUT_H // 2  # 960
-# side_by_side usa 40/60: apresentação em cima, pessoa maior embaixo.
-SBS_TOP_H = 768
-SBS_BOT_H = OUT_H - SBS_TOP_H  # 1152
+# side_by_side usa 30/70: apresentação em cima, pessoa grande embaixo.
+SBS_TOP_H = 576
+SBS_BOT_H = OUT_H - SBS_TOP_H  # 1344
 
 Layout = Literal["auto", "side_by_side", "pip", "face_only"]
 
@@ -137,15 +137,17 @@ def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
         y0 = 0
 
     # Top: se o rosto é um PiP pequeno no canto, cortamos o lado onde ele fica.
+    # Multiplicador generoso (4x) pra garantir que a borda do PiP fique fora.
     if face and face[2] < 0.25:
         fx = face[0]
         fw_rel = face[2]
         if fx > 0.5:
-            edge = max(0.4, fx - fw_rel * 2.0)
+            # Mantém no máximo 75% do lado esquerdo pra sempre cortar o PiP.
+            edge = min(0.75, max(0.4, fx - fw_rel * 4.0))
             top_cw = _even(int(sw * edge))
             top_cx = 0
         else:
-            edge = min(0.6, fx + fw_rel * 2.0)
+            edge = max(0.25, min(0.6, fx + fw_rel * 4.0))
             top_cx = _even(int(sw * edge))
             top_cw = _even(sw - top_cx)
         top_pre = f"crop={top_cw}:{sh}:{top_cx}:0,"
