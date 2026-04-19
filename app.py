@@ -140,11 +140,18 @@ with tab_video:
         )
 
         # Gates de ambiente
-        _api_key = st.secrets.get("OPENAI_API_KEY") if hasattr(st, "secrets") else None
+        import os as _os
+        _api_key = None
+        try:
+            _api_key = st.secrets.get("OPENAI_API_KEY")
+        except Exception:
+            pass
+        if not _api_key:
+            _api_key = _os.environ.get("OPENAI_API_KEY")
         if not _api_key:
             st.error(
-                "Configure **OPENAI_API_KEY** em Settings → Secrets (ou "
-                "`.streamlit/secrets.toml` local) para usar este recurso."
+                "Configure **OPENAI_API_KEY** — no Railway via **Variables**, "
+                "ou localmente em `.streamlit/secrets.toml`."
             )
             return
         if _shutil.which("ffmpeg") is None:
