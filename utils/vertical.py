@@ -136,20 +136,25 @@ def _render_side_by_side(src: str, out: str, face, sw: int, sh: int) -> str:
         x0 = _even(int((sw - crop_w) / 2))
         y0 = 0
 
-    # Top: se o rosto é um PiP pequeno no canto, cortamos o lado onde ele fica.
-    # Multiplicador generoso (4x) pra garantir que a borda do PiP fique fora.
-    if face and face[2] < 0.25:
+    # Top: separa a parte do rosto da parte do conteúdo.
+    # Usa a posição do rosto pra decidir qual lado do frame é slide/apresentação.
+    if face:
         fx = face[0]
-        fw_rel = face[2]
-        if fx > 0.5:
-            # Mantém no máximo 75% do lado esquerdo pra sempre cortar o PiP.
-            edge = min(0.75, max(0.4, fx - fw_rel * 4.0))
-            top_cw = _even(int(sw * edge))
-            top_cx = 0
+        fw = face[2]
+        if fw < 0.15:
+            # Rosto pequeno (PiP no canto) → margem generosa.
+            margin = fw * 4.0 + 0.05
         else:
-            edge = max(0.25, min(0.6, fx + fw_rel * 4.0))
-            top_cx = _even(int(sw * edge))
+            # Rosto grande (native split) → corta rente à borda do rosto.
+            margin = fw * 0.7 + 0.02
+        if fx < 0.5:
+            cut_at = max(0.35, min(0.55, fx + margin))
+            top_cx = _even(int(sw * cut_at))
             top_cw = _even(sw - top_cx)
+        else:
+            cut_at = max(0.45, min(0.65, fx - margin))
+            top_cx = 0
+            top_cw = _even(int(sw * cut_at))
         top_pre = f"crop={top_cw}:{sh}:{top_cx}:0,"
     else:
         top_pre = ""
