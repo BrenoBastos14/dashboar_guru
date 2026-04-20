@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Algo deu errado</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      max-width: 520px;
+      width: 100%;
+      padding: 48px 40px;
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 72px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 26px;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+
+    p {
+      font-size: 16px;
+      color: #555;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .error-detail {
+      background: #fff5f5;
+      border: 1px solid #f5c6cb;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      color: #8a1f2a;
+      font-size: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .btn-retry {
+      display: inline-block;
+      background: #eb3349;
+      color: #ffffff;
+      text-decoration: none;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      transition: background 0.2s ease;
+    }
+
+    .btn-retry:hover {
+      background: #c82333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⚠️</div>
+    <h1>Algo deu errado</h1>
+    <p id="message">
+      Não conseguimos criar o filtro no seu Gmail. Você pode tentar novamente.
+    </p>
+
+    <div id="error-detail" class="error-detail" style="display: none;"></div>
+
+    <a href="/api/gmail/autorizar" class="btn-retry">Tentar novamente</a>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+
+    const messages = {
+      auth_denied: 'Você cancelou a autorização no Google.',
+      no_code: 'Não recebemos a resposta do Google. Tente novamente.',
+      token_expired: 'A sessão com o Google expirou. Autorize novamente.',
+      insufficient_permissions: 'O Google não recebeu as permissões necessárias.',
+      unknown: 'Erro inesperado. Tente novamente em instantes.'
+    };
+
+    if (error && messages[error]) {
+      const detail = document.getElementById('error-detail');
+      detail.style.display = 'block';
+      detail.textContent = messages[error];
+    }
+  </script>
+</body>
+</html>

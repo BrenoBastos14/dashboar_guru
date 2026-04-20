@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tudo certo!</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      max-width: 520px;
+      width: 100%;
+      padding: 48px 40px;
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 72px;
+      margin-bottom: 16px;
+      animation: bounce 0.6s ease;
+    }
+
+    @keyframes bounce {
+      0% { transform: scale(0); }
+      60% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+
+    p {
+      font-size: 16px;
+      color: #555;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .status-note {
+      background: #f0faf4;
+      border: 1px solid #b4e5c6;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      color: #1a7a4f;
+      font-size: 14px;
+    }
+
+    .status-note.existing {
+      background: #fff9e6;
+      border-color: #f5d85c;
+      color: #8a6d1b;
+    }
+
+    .btn-close {
+      display: inline-block;
+      background: #11998e;
+      color: #ffffff;
+      text-decoration: none;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      transition: background 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-close:hover {
+      background: #0d7a72;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">✅</div>
+    <h1 id="title">Pronto! Tudo configurado</h1>
+    <p id="message">
+      O filtro foi criado no seu Gmail. Nossos próximos emails vão cair direto
+      na sua caixa de entrada principal.
+    </p>
+
+    <div id="status-note" class="status-note" style="display: none;"></div>
+
+    <button class="btn-close" onclick="fecharOuVoltar()">Fechar janela</button>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+
+    if (status === 'already_exists') {
+      document.getElementById('title').textContent = 'Você já está protegido!';
+      document.getElementById('message').textContent =
+        'Vimos que esse filtro já existia no seu Gmail. Não precisa fazer mais nada.';
+      const note = document.getElementById('status-note');
+      note.classList.add('existing');
+      note.style.display = 'block';
+      note.textContent = 'Nenhuma alteração foi necessária.';
+    }
+
+    function fecharOuVoltar() {
+      window.close();
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 200);
+    }
+  </script>
+</body>
+</html>
