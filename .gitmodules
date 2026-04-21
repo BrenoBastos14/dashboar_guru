@@ -1,0 +1,3 @@
+[submodule "autoreason"]
+	path = autoreason
+	url = https://github.com/NousResearch/autoreason.git
