@@ -6,7 +6,8 @@ FRAMEWORK 1 — MACRO-ESTRUTURA EM 12 BLOCOS
 
 Todo anúncio escalado de DR segue esta arquitetura (a ordem pode variar, mas os blocos devem estar presentes):
 
-Bloco 1 — HOOK: Abertura que captura atenção. Compreende os PRIMEIROS 15 SEGUNDOS do vídeo (não apenas a primeira frase). Usa a fórmula Ângulo + Benefício. É o bloco mais crítico — tudo que acontece até os 15s é hook.
+Bloco 1 — HOOK: Abertura que captura atenção. Usa a fórmula Ângulo + Benefício. É o bloco mais crítico.
+  ↳ DURAÇÃO: O hook compreende os primeiros 15 SEGUNDOS completos do vídeo — não apenas a primeira frase. Avalie tudo que acontece do 0s ao 15s como parte do hook.
 Bloco 2 — QUALIFICAÇÃO: Filtrar e incluir o lead. "Se você sofre de X, Y ou Z..."
 Bloco 3 — INVALIDAÇÃO 1.0: Listar 2-3 soluções comuns que falharam. Criar vácuo mental.
 Bloco 4 — SPOILER DO MUP: Plantar semente da causa raiz sem revelar completamente.
@@ -86,7 +87,7 @@ RETORNE APENAS um JSON válido. Sem markdown, sem backticks, sem texto antes ou 
     "nota_geral": 0,
     "classificacao": "Fraco|Mediano|Bom|Forte|Excepcional",
     "notas": {
-      "hook": { "nota": 0, "label": "Hook (0–15s)", "obs": "avalie os primeiros 15 segundos completos" },
+      "hook": { "nota": 0, "label": "Hook", "obs": "1 frase" },
       "qualificacao": { "nota": 0, "label": "Qualificação", "obs": "1 frase" },
       "invalidacao": { "nota": 0, "label": "Invalidação", "obs": "1 frase" },
       "mup": { "nota": 0, "label": "MUP", "obs": "1 frase" },
@@ -127,7 +128,8 @@ RETORNE APENAS um JSON válido. Sem markdown, sem backticks, sem texto antes ou 
     "beneficio_tipo": "Explícito|Implícito",
     "beneficio_camada": "Desejo|Funcional|Dimensional|Emocional",
     "forca": "Forte|Médio|Fraco",
-    "texto_do_hook": "Transcrição exata dos primeiros 15 segundos do vídeo (o hook completo, não apenas a primeira frase)",
+    "texto_do_hook": "Transcrição exata do hook usado",
+    "duracao_hook": "Transcrição completa dos primeiros 15 segundos do vídeo (o hook inteiro, não só a primeira frase)",
     "justificativa": "2-3 frases explicando a avaliação"
   },
   "estrutura": {
@@ -301,12 +303,12 @@ export function buildDRPrompt(transcription: string, historyContext: string): st
 export type TournamentTipo = "hook" | "body" | "cta";
 
 const CRITERIOS_TORNEIO: Record<TournamentTipo, string> = {
-  hook: `- Representa os primeiros 15 segundos do vídeo — não apenas a primeira frase
-- Ângulo ESPECÍFICO nos primeiros 3s (não genérico tipo "descubra o segredo")
-- Promessa concreta OU curiosidade viva (vácuo mental) estabelecida até 15s
+  hook: `- Fisga em <3s (sem enrolação)
+- Ângulo ESPECÍFICO (não genérico tipo "descubra o segredo")
+- Promessa concreta OU curiosidade viva (vácuo mental)
 - Linguagem visceral, sensorial — não clichê
 - Usa um dos 21 ângulos (Contrarian/Paradoxal/Pop Quiz/Curiosidade/Conspiração/Teaser Mecanismo/Truque/Receita Estranha/Nova Descoberta/Big Mistake/etc)
-- Deve manter atenção e construir tensão durante os 15 segundos inteiros`,
+- Representa os primeiros 15 SEGUNDOS completos — mantém tensão e promessa durante todo esse período, não só na primeira frase`,
   body: `- Invalida 2+ soluções comuns com Reason Why específico (ligado ao MUP)
 - Conecta MUP → MUF → MUS de forma clara
 - Traz prova concreta (cliente, número, antes/depois, fonte)

@@ -61,7 +61,7 @@ interface AnalysisResult {
   };
   analise_hook?: {
     angulo_identificado?: string; beneficio_tipo?: string; beneficio_camada?: string;
-    forca?: string; texto_do_hook?: string; justificativa?: string;
+    forca?: string; texto_do_hook?: string; duracao_hook?: string; justificativa?: string;
   };
   estrutura?: {
     blocos_presentes?: { bloco: string; qualidade: string; trecho: string }[];
@@ -890,6 +890,12 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
               <div className="rounded-lg p-3" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}>
                 <p className="text-xs mb-1" style={{ color: "#818cf8" }}>Texto do Hook</p>
                 <p className="text-sm italic" style={{ color: "rgba(255,255,255,0.8)" }}>&ldquo;{analysis.analise_hook.texto_do_hook}&rdquo;</p>
+              </div>
+            )}
+            {analysis.analise_hook.duracao_hook && (
+              <div className="rounded-lg p-3" style={{ background: "rgba(234,179,8,0.05)", border: "1px solid rgba(234,179,8,0.2)" }}>
+                <p className="text-xs mb-1" style={{ color: "#eab308" }}>Hook completo (0–15s)</p>
+                <p className="text-sm italic" style={{ color: "rgba(255,255,255,0.75)" }}>&ldquo;{analysis.analise_hook.duracao_hook}&rdquo;</p>
               </div>
             )}
             {analysis.analise_hook.justificativa && (
