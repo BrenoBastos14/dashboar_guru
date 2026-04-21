@@ -296,6 +296,101 @@ export function buildDRPrompt(transcription: string, historyContext: string): st
   );
 }
 
+// ─── TORNEIO (Autoreason) ─────────────────────────────────────────────────────
+
+export type TournamentTipo = "hook" | "body" | "cta";
+
+const CRITERIOS_TORNEIO: Record<TournamentTipo, string> = {
+  hook: `- Fisga em <3s (sem enrolação)
+- Ângulo ESPECÍFICO (não genérico tipo "descubra o segredo")
+- Promessa concreta OU curiosidade viva (vácuo mental)
+- Linguagem visceral, sensorial — não clichê
+- Usa um dos 21 ângulos (Contrarian/Paradoxal/Pop Quiz/Curiosidade/Conspiração/Teaser Mecanismo/Truque/Receita Estranha/Nova Descoberta/Big Mistake/etc)`,
+  body: `- Invalida 2+ soluções comuns com Reason Why específico (ligado ao MUP)
+- Conecta MUP → MUF → MUS de forma clara
+- Traz prova concreta (cliente, número, antes/depois, fonte)
+- Linguagem visceral e sensorial
+- Usa nomeação proprietária quando possível (nome do método/processo)
+- Medo visceral com detalhes sensoriais`,
+  cta: `- Próximo passo ÓBVIO (uma ação clara)
+- Urgência REAL ou escassez específica (não genérica tipo "aproveite agora")
+- Reduz atrito (grátis, sem cartão, sem compromisso, preço)
+- Future pacing — projeção emocional do benefício
+- Fala para ASSISTIR a apresentação/VSL (não comprar direto)`,
+};
+
+export function tournamentAdversarialPrompt(tipo: TournamentTipo, currentText: string, context: string): string {
+  return `Você é um crítico ADVERSARIAL de copy de Direct Response brasileiro. Sua tarefa é reescrever o ${tipo.toUpperCase()} abaixo ATACANDO suas fraquezas específicas. Identifique o PONTO FRACO real do texto atual e reescreva eliminando essa fraqueza — não faça melhorias genéricas.
+
+CRITÉRIOS PARA ${tipo.toUpperCase()}:
+${CRITERIOS_TORNEIO[tipo]}
+
+CONTEXTO DA CAMPANHA:
+${context}
+
+${tipo.toUpperCase()} ATUAL:
+"""
+${currentText}
+"""
+
+Devolva APENAS o novo ${tipo} reescrito, em português brasileiro coloquial e visceral. Sem explicação, sem aspas, sem markdown.`;
+}
+
+export function tournamentSynthesizePrompt(tipo: TournamentTipo, versionA: string, versionB: string, context: string): string {
+  return `Você é um sintetizador de copy de Direct Response. Combine os pontos FORTES das duas versões de ${tipo.toUpperCase()} abaixo em UMA versão única. NÃO faça um meio-termo — extraia o que cada versão tem de melhor e integre.
+
+CRITÉRIOS DO ${tipo.toUpperCase()}:
+${CRITERIOS_TORNEIO[tipo]}
+
+CONTEXTO DA CAMPANHA:
+${context}
+
+VERSÃO A:
+"""
+${versionA}
+"""
+
+VERSÃO B:
+"""
+${versionB}
+"""
+
+Devolva APENAS a versão sintetizada, em português brasileiro coloquial e visceral. Sem explicação, sem aspas, sem markdown.`;
+}
+
+export function tournamentJudgePrompt(tipo: TournamentTipo, shuffledVersions: string[], context: string): string {
+  return `Você é um juiz INDEPENDENTE de copy de Direct Response brasileiro. Avalie as 3 versões de ${tipo.toUpperCase()} abaixo de forma CEGA (não sabe qual é original/reescrita/sintetizada) e ranqueie da MELHOR para a PIOR.
+
+CRITÉRIOS DE AVALIAÇÃO:
+${CRITERIOS_TORNEIO[tipo]}
+
+"Nenhuma mudança necessária" é um resultado legítimo — se a versão mais simples é a melhor, ranqueie ela em 1º.
+
+CONTEXTO DA CAMPANHA:
+${context}
+
+VERSÃO 1:
+"""
+${shuffledVersions[0]}
+"""
+
+VERSÃO 2:
+"""
+${shuffledVersions[1]}
+"""
+
+VERSÃO 3:
+"""
+${shuffledVersions[2]}
+"""
+
+Responda APENAS em JSON válido no formato exato:
+{"ranking":[N,N,N],"motivo":""}
+
+Onde "ranking" é array com 1º, 2º e 3º lugar (ex: [2,1,3] = versão 2 em 1º, versão 1 em 2º, versão 3 em 3º).
+"motivo" = 1 frase curta dizendo por que o vencedor ganhou.`;
+}
+
 export function parseDRAnalysis(text: string): Record<string, unknown> {
   const cleaned = text
     .replace(/^```json\s*/i, "")

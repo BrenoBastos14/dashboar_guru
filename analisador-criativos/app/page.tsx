@@ -380,8 +380,211 @@ function RemessaModal({ analysis, onClose }: { analysis: AnalysisResult; onClose
   );
 }
 
+// ─── Tournament Modal ───────────────────────────────────────────────────────
+
+type TournamentTipo = "hook" | "body" | "cta";
+
+interface TournamentRound {
+  round: number;
+  versions: { A: string; B: string; AB: string };
+  scores: { A: number; B: number; AB: number };
+  winner: "A" | "B" | "AB";
+  motivos: string[];
+}
+
+interface TournamentResult {
+  tipo: TournamentTipo;
+  initial_text: string;
+  final_text: string;
+  rounds: TournamentRound[];
+  converged: boolean;
+  total_rounds: number;
+}
+
+function TournamentModal({ tipo, initialText, analysis, onClose }: {
+  tipo: TournamentTipo;
+  initialText: string;
+  analysis: AnalysisResult;
+  onClose: () => void;
+}) {
+  const [currentText, setCurrentText] = useState(initialText);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<TournamentResult | null>(null);
+  const [error, setError] = useState("");
+  const [phase, setPhase] = useState("");
+
+  const runTournament = async () => {
+    if (!currentText.trim()) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setPhase("⚔️ Iniciando torneio...");
+    try {
+      const res = await fetch("/api/tournament", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, current_text: currentText, analysis }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro no torneio");
+      setResult(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro desconhecido");
+    } finally {
+      setLoading(false);
+      setPhase("");
+    }
+  };
+
+  const titulo = tipo === "hook" ? "Hook" : tipo === "body" ? "Body" : "CTA";
+  const cor = tipo === "hook" ? "#f472b6" : tipo === "body" ? "#818cf8" : "#22c55e";
+  const bgCor = tipo === "hook" ? "rgba(236,72,153,0.1)" : tipo === "body" ? "rgba(99,102,241,0.1)" : "rgba(34,197,94,0.1)";
+
+  const versionLabels: Record<"A" | "B" | "AB", string> = {
+    A: "Original (A)",
+    B: "Adversarial (B)",
+    AB: "Síntese (A+B)",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 px-4 pb-10" style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(8px)", overflowY: "auto" }} onClick={onClose}>
+      <div className="w-full max-w-2xl card p-6 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-bold text-white text-lg">⚔️ Torneio de {titulo}</h2>
+            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Autoreason · 3 versões × 3 juízes cegos · Borda counting
+            </p>
+          </div>
+          <button onClick={onClose} className="text-sm px-3 py-1 rounded-lg" style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>✕</button>
+        </div>
+
+        {!result && (
+          <>
+            <div className="mb-4">
+              <p className="section-title mb-1">Texto inicial do {titulo.toLowerCase()}</p>
+              <textarea
+                value={currentText}
+                onChange={(e) => setCurrentText(e.target.value)}
+                rows={tipo === "body" ? 6 : 3}
+                disabled={loading}
+                className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "#e2e8f0", lineHeight: 1.6 }}
+              />
+              <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Edite se necessário antes de rodar o torneio.</p>
+            </div>
+
+            <button
+              onClick={runTournament}
+              disabled={loading || !currentText.trim()}
+              className="w-full py-3 rounded-xl font-bold text-white transition-all"
+              style={{ background: loading ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg,#6366f1,#8b5cf6)", cursor: loading ? "not-allowed" : "pointer" }}
+            >
+              {loading ? (phase || "Processando torneio (até ~60s)...") : `⚔️ Iniciar Torneio de ${titulo}`}
+            </button>
+
+            <div className="mt-4 rounded-lg p-3 text-xs" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
+              <p className="font-semibold mb-1" style={{ color: "rgba(255,255,255,0.75)" }}>Como funciona:</p>
+              <p>• <b style={{ color: cor }}>A</b>: texto atual · <b style={{ color: cor }}>B</b>: crítico adversarial reescreve atacando fraquezas · <b style={{ color: cor }}>AB</b>: sintetizador combina forças de A+B</p>
+              <p>• 3 juízes independentes ranqueiam cegamente (não sabem qual é qual)</p>
+              <p>• Borda count: 3pts p/ 1º, 2pts p/ 2º, 1pt p/ 3º</p>
+              <p>• Converge quando o mesmo vencedor ganha 2 rounds seguidos (máx 3 rounds)</p>
+            </div>
+          </>
+        )}
+
+        {error && (
+          <div className="mt-3 rounded-xl p-3" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-4">
+            {/* Vencedor */}
+            <div className="rounded-xl p-5" style={{ background: bgCor, border: `1px solid ${cor}40` }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: cor + "25", color: cor }}>🏆 Vencedor</span>
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    {result.total_rounds} round{result.total_rounds > 1 ? "s" : ""} · {result.converged ? "Convergiu" : "Limite atingido"}
+                  </span>
+                </div>
+                <CopyButton text={result.final_text} />
+              </div>
+              <p className="text-sm" style={{ color: "#e2e8f0", lineHeight: 1.6 }}>{result.final_text}</p>
+            </div>
+
+            {/* Comparação com original */}
+            {result.initial_text !== result.final_text && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-lg p-3" style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                  <p className="text-xs mb-1" style={{ color: "#ef4444" }}>Antes</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{result.initial_text}</p>
+                </div>
+                <div className="rounded-lg p-3" style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.15)" }}>
+                  <p className="text-xs mb-1" style={{ color: "#22c55e" }}>Depois</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>{result.final_text}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Rounds */}
+            <div>
+              <p className="section-title mb-2">📜 Histórico do torneio</p>
+              <div className="space-y-3">
+                {result.rounds.map((r) => (
+                  <div key={r.round} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-bold text-white">Round {r.round}</p>
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {(["A", "B", "AB"] as const).map((id) => (
+                          <span key={id} className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: r.winner === id ? cor + "25" : "rgba(255,255,255,0.04)", color: r.winner === id ? cor : "rgba(255,255,255,0.5)", border: r.winner === id ? `1px solid ${cor}50` : "1px solid rgba(255,255,255,0.08)" }}>
+                            {id}: {r.scores[id]}pts{r.winner === id ? " 🏆" : ""}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {(["A", "B", "AB"] as const).map((id) => (
+                        <div key={id} className="rounded p-2" style={{ background: r.winner === id ? cor + "08" : "rgba(255,255,255,0.02)", border: `1px solid ${r.winner === id ? cor + "30" : "rgba(255,255,255,0.05)"}` }}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold" style={{ color: r.winner === id ? cor : "rgba(255,255,255,0.5)" }}>{versionLabels[id]}</span>
+                            <CopyButton text={r.versions[id]} />
+                          </div>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>{r.versions[id]}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {r.motivos.length > 0 && (
+                      <div className="mt-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                        {r.motivos.map((m, i) => (
+                          <p key={i} className="text-xs italic" style={{ color: "rgba(255,255,255,0.4)" }}>Juiz {i + 1}: {m}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => { setResult(null); setCurrentText(result.final_text); }}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold"
+              style={{ border: `1px solid ${cor}30`, color: cor, background: "transparent" }}
+            >
+              ↺ Rodar novo torneio usando o vencedor como base
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; transcription?: string }) {
   const [rewriteTarget, setRewriteTarget] = useState<{ bloco: string; trecho: string; nota: number } | null>(null);
+  const [tournamentTipo, setTournamentTipo] = useState<TournamentTipo | null>(null);
   // Compute nota_geral client-side as fallback for weighted average
   const notas = analysis.scorecard?.notas;
   const computedScore = notas
@@ -409,6 +612,20 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
       ].filter(Boolean) as ScoreEntry[]
     : [];
 
+  // Helpers para extrair texto inicial de cada seção
+  const initialHook = analysis.analise_hook?.texto_do_hook ||
+    analysis.estrutura?.blocos_presentes?.find((b) => b.bloco.toLowerCase().includes("hook"))?.trecho ||
+    (transcription ? transcription.split(/[.!?]/).slice(0, 2).join(". ").trim() + "." : "");
+  const ctaBlocos = (analysis.estrutura?.blocos_presentes || []).filter(
+    (b) => /cta|escassez|future/i.test(b.bloco)
+  );
+  const initialCta = ctaBlocos.map((b) => b.trecho).filter(Boolean).join(" ") || "";
+  const bodyBlocos = (analysis.estrutura?.blocos_presentes || []).filter(
+    (b) => !/hook|cta|escassez|future/i.test(b.bloco)
+  );
+  const initialBody = bodyBlocos.map((b) => b.trecho).filter(Boolean).join(" ") ||
+    (transcription ? transcription.slice(transcription.indexOf(".") + 1).trim() : "");
+
   return (
     <div className="animate-fade-in space-y-4">
       {rewriteTarget && (
@@ -420,6 +637,44 @@ function ResultsView({ analysis, transcription }: { analysis: AnalysisResult; tr
           onClose={() => setRewriteTarget(null)}
         />
       )}
+      {tournamentTipo && (
+        <TournamentModal
+          tipo={tournamentTipo}
+          initialText={tournamentTipo === "hook" ? initialHook : tournamentTipo === "cta" ? initialCta : initialBody}
+          analysis={analysis}
+          onClose={() => setTournamentTipo(null)}
+        />
+      )}
+
+      {/* ── TORNEIOS (Autoreason) ── */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="section-title">⚔️ Refinar via Torneio</p>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+              Gera 3 versões, avalia com 3 juízes cegos e converge no vencedor (Autoreason)
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {([
+            { tipo: "hook", label: "Hook", emoji: "🎣", color: "#f472b6", bg: "rgba(236,72,153,0.08)", border: "rgba(236,72,153,0.25)" },
+            { tipo: "body", label: "Body", emoji: "📝", color: "#818cf8", bg: "rgba(99,102,241,0.08)", border: "rgba(99,102,241,0.25)" },
+            { tipo: "cta", label: "CTA", emoji: "🎯", color: "#22c55e", bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.25)" },
+          ] as const).map(({ tipo, label, emoji, color, bg, border }) => (
+            <button
+              key={tipo}
+              onClick={() => setTournamentTipo(tipo)}
+              className="py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+              style={{ background: bg, border: `1px solid ${border}`, color }}
+            >
+              <span>{emoji}</span>
+              <span>Torneio do {label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
 
       {/* ── SCORECARD ── */}
       <div className="card p-6">
