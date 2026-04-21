@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 6000 },
+          generationConfig: { temperature: 0.4, maxOutputTokens: 12000 },
         }),
       }
     );

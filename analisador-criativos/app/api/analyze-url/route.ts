@@ -173,7 +173,7 @@ async function analyzeWithGemini(fileUri: string, mimeType: string, transcriptio
             ],
           },
         ],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 6000 },
+        generationConfig: { temperature: 0.4, maxOutputTokens: 12000 },
       }),
     }
   );
