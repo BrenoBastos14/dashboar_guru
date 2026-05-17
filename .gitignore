@@ -7,3 +7,9 @@ dist/
 build/
 .venv/
 venv/
+
+# WhatsApp bot
+data/
+*.db
+*.sqlite
+*.sqlite3
