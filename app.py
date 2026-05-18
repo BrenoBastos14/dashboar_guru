@@ -3,6 +3,7 @@ import traceback
 import pandas as pd
 import streamlit as st
 
+from utils.auth import render_sidebar_account, require_auth
 from utils.charts import chart_receita_por_periodo
 from utils.data_processor import clean_data, compute_kpis, filter_data, load_csv
 from utils.facebook_data import (
@@ -21,6 +22,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+require_auth()
+render_sidebar_account()
 
 
 def _brl(v):

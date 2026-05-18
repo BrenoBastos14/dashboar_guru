@@ -4,8 +4,13 @@ import os
 import requests
 import streamlit as st
 
+from utils.auth import auth_headers, render_sidebar_account, require_auth
+
 
 st.set_page_config(page_title="WhatsApp Bot", page_icon="💬", layout="wide")
+
+require_auth()
+render_sidebar_account()
 
 DEFAULT_API = os.getenv("WHATSAPP_BACKEND_URL", "http://localhost:8000")
 DEFAULT_WEBHOOK = os.getenv(
@@ -29,7 +34,14 @@ with st.sidebar:
 
 def api(path: str, method: str = "GET", **kwargs):
     url = f"{api_base}{path}"
-    r = requests.request(method, url, timeout=60, **kwargs)
+    headers = kwargs.pop("headers", {}) or {}
+    headers.update(auth_headers())
+    r = requests.request(method, url, headers=headers, timeout=60, **kwargs)
+    if r.status_code == 401:
+        st.session_state.pop("auth_token", None)
+        st.session_state.pop("auth_user", None)
+        st.error("Sessão expirada. Faça login novamente.")
+        st.stop()
     r.raise_for_status()
     return r.json() if r.content else {}
 
