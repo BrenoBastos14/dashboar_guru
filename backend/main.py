@@ -4,12 +4,13 @@ import logging
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, evolution, llm
-from .config import DEFAULT_SYSTEM_PROMPT
+from . import auth, db, evolution, llm
+from .config import DATABASE_URL, DEFAULT_SYSTEM_PROMPT
+from .models import User
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("whatsapp-bot")
@@ -18,7 +19,8 @@ log = logging.getLogger("whatsapp-bot")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
-    log.info("Database initialized at %s", db.DB_PATH if hasattr(db, "DB_PATH") else "")
+    log.info("Database ready at %s", DATABASE_URL.split("@")[-1])
+    auth.ensure_admin_user()
     yield
 
 
@@ -29,7 +31,10 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
+
+app.include_router(auth.router)
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +60,6 @@ class EnableRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _extract_text(message: dict | None) -> str | None:
-    """Pull text from the various WhatsApp message shapes Evolution forwards."""
     if not message:
         return None
     conv = message.get("conversation")
@@ -66,7 +70,6 @@ def _extract_text(message: dict | None) -> str | None:
         text = ext.get("text")
         if text:
             return text
-    # ignore image/audio/etc for now
     return None
 
 
@@ -82,8 +85,17 @@ def _is_group(jid: str) -> bool:
     return jid.endswith("@g.us") or jid.endswith("@broadcast")
 
 
+def _require_owned(name: str, user: User) -> dict:
+    inst = db.get_instance(name)
+    if inst is None:
+        raise HTTPException(404, "Instance not found")
+    if inst.get("owner_user_id") not in (None, user.id) and not user.is_admin:
+        raise HTTPException(403, "Você não tem acesso a essa instância")
+    return inst
+
+
 # ---------------------------------------------------------------------------
-# Instance management
+# Health
 # ---------------------------------------------------------------------------
 
 @app.get("/health")
@@ -91,13 +103,23 @@ async def health():
     return {"ok": True}
 
 
+# ---------------------------------------------------------------------------
+# Instance management (autenticado)
+# ---------------------------------------------------------------------------
+
 @app.get("/instances")
-async def get_instances():
-    return db.list_instances()
+async def get_instances(user: User = Depends(auth.require_user)):
+    if user.is_admin:
+        return db.list_instances()
+    return db.list_instances(owner_user_id=user.id)
 
 
 @app.post("/instances")
-async def create_instance(payload: CreateInstanceRequest):
+async def create_instance(
+    payload: CreateInstanceRequest, user: User = Depends(auth.require_user)
+):
+    if db.get_instance(payload.name):
+        raise HTTPException(409, "Já existe uma instância com esse nome")
     try:
         evo = await evolution.create_instance(payload.name, payload.webhook_url)
     except httpx.HTTPStatusError as e:
@@ -115,7 +137,11 @@ async def create_instance(payload: CreateInstanceRequest):
         webhook_warning = f"set_webhook unreachable: {e}"
         log.warning(webhook_warning)
 
-    db.upsert_instance(payload.name, payload.system_prompt or DEFAULT_SYSTEM_PROMPT)
+    db.upsert_instance(
+        payload.name,
+        payload.system_prompt or DEFAULT_SYSTEM_PROMPT,
+        owner_user_id=user.id,
+    )
     return {
         "evolution": evo,
         "instance": db.get_instance(payload.name),
@@ -124,9 +150,8 @@ async def create_instance(payload: CreateInstanceRequest):
 
 
 @app.post("/instances/{name}/webhook")
-async def reset_webhook(name: str):
-    if not db.get_instance(name):
-        raise HTTPException(404, "Instance not found")
+async def reset_webhook(name: str, user: User = Depends(auth.require_user)):
+    _require_owned(name, user)
     try:
         return await evolution.set_webhook(name)
     except httpx.HTTPStatusError as e:
@@ -136,7 +161,8 @@ async def reset_webhook(name: str):
 
 
 @app.get("/instances/{name}/qrcode")
-async def get_qr(name: str):
+async def get_qr(name: str, user: User = Depends(auth.require_user)):
+    _require_owned(name, user)
     try:
         return await evolution.connect_instance(name)
     except httpx.HTTPStatusError as e:
@@ -146,23 +172,26 @@ async def get_qr(name: str):
 
 
 @app.put("/instances/{name}/prompt")
-async def update_prompt(name: str, payload: UpdatePromptRequest):
-    if not db.get_instance(name):
-        raise HTTPException(404, "Instance not found")
+async def update_prompt(
+    name: str, payload: UpdatePromptRequest, user: User = Depends(auth.require_user)
+):
+    _require_owned(name, user)
     db.update_instance_prompt(name, payload.system_prompt)
     return db.get_instance(name)
 
 
 @app.put("/instances/{name}/enabled")
-async def toggle_enabled(name: str, payload: EnableRequest):
-    if not db.get_instance(name):
-        raise HTTPException(404, "Instance not found")
+async def toggle_enabled(
+    name: str, payload: EnableRequest, user: User = Depends(auth.require_user)
+):
+    _require_owned(name, user)
     db.set_instance_enabled(name, payload.enabled)
     return db.get_instance(name)
 
 
 @app.delete("/instances/{name}")
-async def remove_instance(name: str):
+async def remove_instance(name: str, user: User = Depends(auth.require_user)):
+    _require_owned(name, user)
     for action in (evolution.logout_instance, evolution.delete_instance):
         try:
             await action(name)
@@ -173,17 +202,19 @@ async def remove_instance(name: str):
 
 
 @app.get("/instances/{name}/conversations")
-async def conversations(name: str):
+async def conversations(name: str, user: User = Depends(auth.require_user)):
+    _require_owned(name, user)
     return db.recent_conversations(name)
 
 
 @app.get("/instances/{name}/conversations/{jid}")
-async def conversation(name: str, jid: str):
+async def conversation(name: str, jid: str, user: User = Depends(auth.require_user)):
+    _require_owned(name, user)
     return db.history(name, jid, limit=200)
 
 
 # ---------------------------------------------------------------------------
-# Webhook
+# Webhook (PÚBLICO — Evolution não envia auth)
 # ---------------------------------------------------------------------------
 
 @app.post("/webhook")
