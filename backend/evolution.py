@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import httpx
 
 from .config import EVOLUTION_API_KEY, EVOLUTION_URL, EVOLUTION_WEBHOOK_URL

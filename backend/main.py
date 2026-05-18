@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from contextlib import asynccontextmanager
 
@@ -74,6 +76,10 @@ def _normalize_number(jid: str) -> str:
 
 def _is_group(jid: str) -> bool:
     return jid.endswith("@g.us") or jid.endswith("@broadcast")
+
+
+def _is_lid(jid: str) -> bool:
+    return jid.endswith("@lid")
 
 
 # ---------------------------------------------------------------------------
@@ -201,6 +207,7 @@ async def webhook(request: Request, instance: str | None = None):
         return {"ok": True}
 
     if event in ("messages_upsert",):
+        log.info("messages_upsert raw body=%s", body)
         await _handle_message(inst_name, data)
         return {"ok": True}
 
@@ -209,14 +216,27 @@ async def webhook(request: Request, instance: str | None = None):
 
 async def _handle_message(instance: str, data: dict) -> None:
     key = data.get("key") or {}
+    log.info("_handle_message key=%s", key)
     if key.get("fromMe"):
+        log.info("skipping fromMe message")
         return
     remote_jid = key.get("remoteJid") or ""
-    if not remote_jid or _is_group(remote_jid):
+    if not remote_jid:
+        log.info("skipping empty remoteJid")
+        return
+    if _is_group(remote_jid):
+        log.info("skipping group message %s", remote_jid)
+        return
+    if _is_lid(remote_jid):
+        log.info("skipping lid message %s", remote_jid)
         return
 
-    text = _extract_text(data.get("message"))
+    msg = data.get("message") or {}
+    log.info("message data keys=%s", list(msg.keys()))
+
+    text = _extract_text(msg)
     if not text:
+        log.info("no text extracted from message %s", msg)
         return
 
     inst = db.get_instance(instance)

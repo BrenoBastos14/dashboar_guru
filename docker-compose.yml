@@ -17,6 +17,8 @@ services:
       DEL_INSTANCE: "false"
       CONFIG_SESSION_PHONE_CLIENT: WhatsApp-Bot
       CONFIG_SESSION_PHONE_NAME: Chrome
+      CONFIG_SESSION_PHONE_VERSION: ""
+      NODE_OPTIONS: --dns-result-order=ipv4first
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: postgresql
       DATABASE_CONNECTION_URI: postgresql://evolution:evolution@postgres:5432/evolution?schema=public
