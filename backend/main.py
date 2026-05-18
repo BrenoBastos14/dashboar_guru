@@ -258,5 +258,12 @@ async def _handle_message(instance: str, data: dict) -> None:
 
     try:
         await evolution.send_text(instance, _normalize_number(remote_jid), reply)
+    except httpx.HTTPStatusError as e:
+        log.error(
+            "send_text %s: status=%s body=%s",
+            remote_jid,
+            e.response.status_code,
+            e.response.text,
+        )
     except Exception:
         log.exception("Failed to send reply via Evolution API")
