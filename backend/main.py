@@ -98,8 +98,35 @@ async def create_instance(payload: CreateInstanceRequest):
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Evolution API unreachable: {e}")
+
+    webhook_warning: str | None = None
+    try:
+        await evolution.set_webhook(payload.name, payload.webhook_url)
+    except httpx.HTTPStatusError as e:
+        webhook_warning = f"set_webhook falhou ({e.response.status_code}): {e.response.text}"
+        log.warning(webhook_warning)
+    except httpx.HTTPError as e:
+        webhook_warning = f"set_webhook unreachable: {e}"
+        log.warning(webhook_warning)
+
     db.upsert_instance(payload.name, payload.system_prompt or DEFAULT_SYSTEM_PROMPT)
-    return {"evolution": evo, "instance": db.get_instance(payload.name)}
+    return {
+        "evolution": evo,
+        "instance": db.get_instance(payload.name),
+        "webhook_warning": webhook_warning,
+    }
+
+
+@app.post("/instances/{name}/webhook")
+async def reset_webhook(name: str):
+    if not db.get_instance(name):
+        raise HTTPException(404, "Instance not found")
+    try:
+        return await evolution.set_webhook(name)
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Evolution API unreachable: {e}")
 
 
 @app.get("/instances/{name}/qrcode")

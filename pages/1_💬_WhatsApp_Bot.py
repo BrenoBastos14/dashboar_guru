@@ -143,11 +143,15 @@ with tab_lista:
             with st.expander(
                 "📱 QR Code / Conexão", expanded=not connected
             ):
-                btn_cols = st.columns([1, 1, 4])
+                btn_cols = st.columns([1, 1, 1, 3])
                 with btn_cols[0]:
                     gen = st.button("Gerar QR", key=f"qr_btn_{name}")
                 with btn_cols[1]:
                     refresh = st.button("Atualizar status", key=f"st_btn_{name}")
+                with btn_cols[2]:
+                    reset_wh = st.button(
+                        "Reconfigurar webhook", key=f"wh_btn_{name}"
+                    )
 
                 if gen:
                     try:
@@ -159,6 +163,13 @@ with tab_lista:
 
                 if refresh:
                     st.rerun()
+
+                if reset_wh:
+                    try:
+                        api(f"/instances/{name}/webhook", method="POST")
+                        st.success("Webhook reconfigurado na Evolution API.")
+                    except Exception as e:
+                        st.error(f"Falha ao configurar webhook: {e}")
 
                 qr = st.session_state.get(f"qr_data_{name}")
                 if connected:

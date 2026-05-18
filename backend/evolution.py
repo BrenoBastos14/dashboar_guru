@@ -42,6 +42,35 @@ async def connect_instance(name: str) -> dict:
         return r.json()
 
 
+async def set_webhook(name: str, webhook_url: str | None = None) -> dict:
+    # Evolution API v2.1.1 ignora o campo `webhook` no /instance/create;
+    # precisa ser configurado em separado via /webhook/set/{name}.
+    url = f"{EVOLUTION_URL}/webhook/set/{name}"
+    payload = {
+        "webhook": {
+            "enabled": True,
+            "url": webhook_url or EVOLUTION_WEBHOOK_URL,
+            "byEvents": False,
+            "base64": True,
+            "events": DEFAULT_EVENTS,
+        }
+    }
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.post(url, json=payload, headers=_headers())
+        r.raise_for_status()
+        return r.json()
+
+
+async def find_webhook(name: str) -> dict:
+    url = f"{EVOLUTION_URL}/webhook/find/{name}"
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.get(url, headers=_headers())
+        if r.status_code == 404:
+            return {}
+        r.raise_for_status()
+        return r.json() if r.content else {}
+
+
 async def fetch_instance(name: str) -> dict:
     url = f"{EVOLUTION_URL}/instance/fetchInstances"
     async with httpx.AsyncClient(timeout=30) as c:
