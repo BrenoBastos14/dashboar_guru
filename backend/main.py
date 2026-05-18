@@ -71,15 +71,15 @@ def _extract_text(message: dict | None) -> str | None:
 
 
 def _normalize_number(jid: str) -> str:
+    # JIDs @lid (Linked Device IDs do Baileys/WhatsApp moderno) não são
+    # números de telefone — a Evolution API aceita o JID completo nesse caso.
+    if jid.endswith("@lid"):
+        return jid
     return jid.split("@")[0]
 
 
 def _is_group(jid: str) -> bool:
     return jid.endswith("@g.us") or jid.endswith("@broadcast")
-
-
-def _is_lid(jid: str) -> bool:
-    return jid.endswith("@lid")
 
 
 # ---------------------------------------------------------------------------
@@ -226,9 +226,6 @@ async def _handle_message(instance: str, data: dict) -> None:
         return
     if _is_group(remote_jid):
         log.info("skipping group message %s", remote_jid)
-        return
-    if _is_lid(remote_jid):
-        log.info("skipping lid message %s", remote_jid)
         return
 
     msg = data.get("message") or {}
